@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S&P 500 Viz</title>
+  <link rel="stylesheet" href="../static/css/main.css">
+  <link rel="stylesheet" href="../static/css/viz.css">
+</head>
+<header>
+<div id="header">
+  <span class="header-title" id="header-title">The S&P 500</span>
+  <div class="header-sep"></div>
+  <span class="header-title" id="header-performance">—</span>
+  <div class="header-sep"></div>
+    <div class="header-rectangle">
+    <a href="/viz" class="rect-section" style="flex: 1.6;">Main Visualization</a>
+    <a href="/portfolio_browser" class="rect-section" style="flex: 1.2;">Portfolios</a>
+    <a href="/stock" class="rect-section">Stocks</a>
+  </div>
+</div>
+    </header>
+<body>
+<div id="app">
+
+  <div id="toolbar">
+    <button class="tb-btn" id="btn-sidebar" title="Toggle sidebar">☰</button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn color-btn active" id="col-0" title="Color by day change">1D</button>
+    <button class="tb-btn color-btn" id="col-1" title="Color by MA50">50D</button>
+    <button class="tb-btn color-btn" id="col-2" title="Color by MA200">200D</button>
+    <button class="tb-btn color-btn" id="col-3" title="Color by fPEG">PEG</button>
+    <div class="dropdown-wrap">
+      <button class="tb-btn" id="cols-menu">...</button>
+      <div class="dropdown" id="cols-dropdown">
+        <div class="dropdown-item" data-col="4" title="Color by Analyst Sentiment">Analyst Sentiment</div>
+        <div class="dropdown-item" data-col="5" title="Color by PE/fPE Ratio">PE/fPE</div>
+      </div>
+    </div>
+    <div class="tb-sep"></div>
+    <input type="text" id="search-box" placeholder="Search ticker… (L)" spellcheck="false">
+    <div class="tb-sep"></div>
+    <div id="status">—</div>
+  </div>
+
+  <div id="main">
+    <div id="sidebar">
+      <div id="sidebar-header">Watchlist / All Stocks</div>
+      <div id="sidebar-list"></div>
+    </div>
+
+    <div id="canvas-wrap">
+      <canvas id="heatmap"></canvas>
+      <div id="loading">
+        <div class="loading-text" id="loading-text">CONNECTING TO DATA…</div>
+        <div class="loading-bar-wrap"><div class="loading-bar" id="loading-bar"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tooltip"></div>
+
+  <div id="detail">
+    <div class="detail-header">
+      <div>
+        <div class="detail-symbol" id="detail-symbol">—</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div class="detail-close" id="detail-portfolio-add">＋</div>
+        <div id="detail-star">☆</div>
+        <div class="detail-close" id="detail-close">✕</div>
+      </div>
+    </div>
+    <div class="detail-sector" id="detail-sector">—</div>
+    <div class="detail-grid">
+      <div class="detail-cell"><div class="detail-cell-label">Price</div><div class="detail-cell-val neutral" id="dp-price">—</div></div>
+      <div class="detail-cell"><div class="detail-cell-label">Change</div><div class="detail-cell-val" id="dp-change">—</div></div>
+      <div class="detail-cell"><div class="detail-cell-label">Mkt Cap</div><div class="detail-cell-val neutral" id="dp-mcap">—</div></div>
+      <div class="detail-cell"><div class="detail-cell-label">P/E</div><div class="detail-cell-val neutral" id="dp-pe">—</div></div>
+      <div class="detail-cell"><div class="detail-cell-label">fP/E</div><div class="detail-cell-val neutral" id="dp-fpe">—</div></div>
+      <div class="detail-cell"><div class="detail-cell-label">fPEG</div><div class="detail-cell-val neutral" id="dp-fpeg">—</div></div>
+      <div class="detail-cell"><div class="detail-cell-label">MA50</div><div class="detail-cell-val" id="dp-ma50">—</div></div>
+      <div class="detail-cell"><div class="detail-cell-label">MA200</div><div class="detail-cell-val" id="dp-ma200">—</div></div>
+    </div>
+    <div class="detail-recomm">
+      <div class="detail-recomm-label">Analyst Consensus</div>
+      <div class="detail-recomm-val" id="dp-recomm">—</div>
+      <div class="detail-recomm-bar" id="dp-recomm-fill"></div>
+    </div>
+  </div>
+
+</div>
+<div id="portfolio-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add <span id="modal-symbol">—</span> to…</div>
+      <div class="modal-close" id="modal-close">✕</div>
+    </div>
+    <div class="modal-amount-wrap">
+      <input type="number" id="modal-amount" placeholder="Amount in $" min="0" step="1">
+      <div id="modal-shares-preview">— shares</div>
+    </div>
+    <div id="modal-portfolio-list"></div>
+  </div>
+</div>
+<script src="../static/js/viz.js"></script>
+</body>
+</html>

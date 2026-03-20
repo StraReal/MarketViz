@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Analysis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/css/main.css">
+  <link rel="stylesheet" href="../static/css/stock.css">
+</head>
+<header>
+<div id="header">
+  <span class="header-title" id="header-title">Stock</span>
+  <div class="header-sep"></div>
+  <span class="header-title" id="header-performance">—</span>
+  <div class="header-sep"></div>
+    <div class="header-rectangle">
+    <a href="/viz" class="rect-section" style="flex: 1.6;">Main Visualization</a>
+    <a href="/portfolio_browser" class="rect-section" style="flex: 1.2;">Portfolios</a>
+    <a href="/stock" class="rect-section">Stocks</a>
+  </div>
+</div>
+    </header>
+<body>
+  <div id="subheader">
+    <span class="subheader-title">CHART</span>
+    <div id="symbol-list"></div>
+    <div id="add-wrap">
+      <input id="sym-input" placeholder="Add symbol…" maxlength="8" autocomplete="off" spellcheck="false">
+      <button id="btn-add" class="btn">ADD</button>
+    </div>
+  </div>
+
+  <div id="period-bar">
+    <button class="period-btn" data-days="7">1W</button>
+    <button class="period-btn" data-days="30">1M</button>
+    <button class="period-btn active" data-days="90">3M</button>
+    <button class="period-btn" data-days="180">6M</button>
+    <button class="period-btn" data-days="365">1Y</button>
+    <button class="period-btn" data-days="0">ALL</button>
+  </div>
+
+  <div id="graph-section">
+    <div id="graph-wrap">
+      <canvas id="graph-canvas"></canvas>
+      <div id="crosshair-tip"></div>
+    </div>
+    <div id="scroll-hint">← DRAG TO SCROLL →</div>
+  </div>
+
+  <div id="info-section">
+    <div id="info-grid"></div>
+    <div id="info-sheet">
+    </div>
+  </div>
+
+  <div id="news-section" class="panel-section">
+          <div id="news-panel" class="panel">
+<div id="news-header" class="panel-header">
+  Stock News
+</div>
+      <div id="news-body" class="panel-body"></div>
+    </div>
+  </div>
+
+
+  <div id="comments-section" class="panel-section">
+    <div id="comments-panel" class="panel">
+<div id="comments-header" class="panel-header">
+  StockTwits Comments
+  <a href="https://stocktwits.com" target="_blank" id="comments-link"
+     style="color: #555; font-size: 11px; text-decoration: none; margin-left: auto;">
+    View on StockTwits ↗
+  </a>
+</div>
+      <div id="comments-body" class="panel-body"></div>
+    </div>
+  </div>
+
+  <script src="../static/js/stock.js"></script>
+</body>
+</html>

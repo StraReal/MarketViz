@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d0d0f;
+  --surface: #161618;
+  --border: #2a2a2e;
+  --text: #e8e8ea;
+  --text-dim: #888;
+  --accent: #f0c040;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  overflow: hidden;
+  user-select: none;
+}
+
+#app {
+  width: 100vw; height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  height: 4.5vh;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.header-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.header-title.pos {color: #4caf50;}
+.header-title.neg {color: #f44336;}
+
+.header-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+}
+
+.header-rectangle {
+  position: relative;
+  width: 20%;
+  height: 60%;
+  margin-left: auto;
+  background-color: var(--surface);
+  border-radius: 0.5vh;
+  border: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  overflow: hidden;
+}
+
+.rect-section {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: bold;
+  cursor: pointer;
+  height: 100%;
+  position: relative;
+  transition: background 0.2s ease;
+  font-size: 0.6vw;
+}
+
+.rect-section:hover {
+  background-color: rgba(70,70,90, 0.2);
+}
+
+.rect-section:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 10%;
+  height: 80%;
+  width: 2px;
+  background-color: var(--border);
+}
