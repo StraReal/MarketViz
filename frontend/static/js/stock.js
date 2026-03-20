@@ -582,7 +582,7 @@ async function renderNewsSheet() {
         font-size: 12px;
         color: #aaa;
       `;
-      el.textContent = 'No recent news.';
+      el.textContent = 'No news found.';
       newsBody.appendChild(el);
       return;
     }
