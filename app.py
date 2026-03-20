@@ -541,8 +541,7 @@ def sell_holding(name):
 
 @app.route('/api/index')
 def get_index():
-    import requests
-    r = requests.get('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=2d',
+    r = req.get('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=2d',
                      headers={'User-Agent': 'Mozilla/5.0'})
     meta = r.json()['chart']['result'][0]['meta']
     price = meta['regularMarketPrice']
