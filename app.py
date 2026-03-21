@@ -210,21 +210,26 @@ def fetch_one(ticker_name):
         print(f"ERROR {ticker_name}: {e}")
         return None
 
+
 def worker_loop(ticker_slice, worker_id):
+    i = 0
     while not stop_event.is_set():
-        rate_limited_event.clear()
-        for ticker in ticker_slice:
-            if stop_event.is_set():
-                return
-            if rate_limited_event.is_set():
-                print(f"Worker {worker_id} rate limited, backing off...")
-                time.sleep(60)
-                rate_limited_event.clear()
-            result = fetch_one(ticker)
-            if result:
-                with lock:
-                    stocks[result['symbol']] = result
-        print(f"Worker {worker_id} completed pass, restarting...")
+        ticker = ticker_slice[i]
+        result = fetch_one(ticker)
+        if rate_limited_event.is_set():
+            print(f"Worker {worker_id} rate limited, backing off...")
+            time.sleep(60)
+            rate_limited_event.clear()
+            continue
+
+        if result:
+            with lock:
+                stocks[result['symbol']] = result
+
+        i += 1
+        if i >= len(ticker_slice):
+            i = 0
+            print(f"Worker {worker_id} completed pass, restarting...")
 
 def fetch_all():
     all_tickers = load_tickers()
