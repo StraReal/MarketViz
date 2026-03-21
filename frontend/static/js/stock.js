@@ -10,6 +10,7 @@ let panOffset   = 0;
 let isPanning   = false;
 let panStartX   = 0;
 let panStartOffset = 0;
+let isLoading = true;
 
 const gWrap   = document.getElementById('graph-wrap');
 const gCanvas = document.getElementById('graph-canvas');
@@ -52,24 +53,247 @@ function getData(sym) {
   return rawData[sym] || [];
 }
 
-function tradingDaysForPeriod(data) {
-  if (activeDays === 0) return data.length;
-  return Math.round(activeDays * 5 / 7);
+function daysToPoints(data, days) {
+  if (!days || !data.length) return data.length;
+  const last = new Date(data[data.length - 1].date);
+  const cutoff = new Date(last);
+  if (days === 365)       cutoff.setFullYear(cutoff.getFullYear() - 1);
+  else if (days === 1825) cutoff.setFullYear(cutoff.getFullYear() - 5);
+  else                    cutoff.setDate(cutoff.getDate() - days);
+  return data.filter(d => new Date(d.date) >= cutoff).length;
+}
+
+function renderDateMarkers() {
+  const layer = document.getElementById('date-markers-layer');
+  layer.innerHTML = '';
+
+  const sym = symbols[0];
+  if (!sym || !datesData[sym] || !rawData[sym]?.length) return;
+
+  const W = gCanvas.width, H = gCanvas.height;
+  const PAD = { top: 24, right: 20, bottom: 36, left: 68 };
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top - PAD.bottom;
+
+  const allSeries = symbols.map(s => ({ sym: s, data: getData(s) })).filter(s => s.data.length > 1);
+  if (!allSeries.length) return;
+
+  const longest = allSeries.reduce((a, b) => a.data.length >= b.data.length ? a : b);
+  const N = longest.data.length;
+  const visiblePoints = activeDays === 0 ? N : daysToPoints(longest.data, activeDays);
+  const pointSpacing = chartW / Math.max(visiblePoints - 1, 1);
+  const rightIdx = Math.max(visiblePoints - 1, Math.round(N - 1 - panOffset / pointSpacing));
+  const xOfIndex = i => PAD.left + chartW - (rightIdx - i) * pointSpacing;
+
+  const dateToX = (dateStr) => {
+    const target = new Date(dateStr).getTime();
+    const dates = longest.data.map(d => new Date(d.date).getTime());
+    const exact = longest.data.findIndex(d => d.date.slice(0, 10) === dateStr.slice(0, 10));
+    if (exact !== -1) {
+      const x = xOfIndex(exact);
+      if (x < PAD.left || x > PAD.left + chartW) return null;
+      return x;
+    }
+    const lastDate = dates[dates.length - 1];
+    const avgMs = (dates[dates.length - 1] - dates[0]) / (dates.length - 1);
+    if (target > lastDate) {
+      const stepsAhead = (target - lastDate) / avgMs;
+      const x = xOfIndex(longest.data.length - 1) + stepsAhead * pointSpacing;
+      if (x < PAD.left || x > PAD.left + chartW) return null;
+      return x;
+    }
+    return null;
+  };
+
+  const baseY = PAD.top + chartH - 15;
+
+  const toCSSX = x => (x / gCanvas.width * 100) + '%';
+  const toCSSY = y => (y / gCanvas.height * 100) + '%';
+
+  const addMarker = (x, y, shape, color, letter, tooltip) => {
+    const el = document.createElement('div');
+    el.className = 'marker';
+    el.style.left = toCSSX(x);
+    el.style.top = toCSSY(y);
+
+    const size = 26;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', size);
+    svg.setAttribute('height', size);
+    svg.style.position = 'absolute';
+
+    const cx = size / 2, cy = size / 2, R = size / 2 - 2;
+
+    let shapEl;
+    if (shape === 'circle') {
+      shapEl = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      shapEl.setAttribute('cx', cx); shapEl.setAttribute('cy', cy); shapEl.setAttribute('r', R);
+    } else if (shape === 'square') {
+      shapEl = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      shapEl.setAttribute('x', 2); shapEl.setAttribute('y', 2);
+      shapEl.setAttribute('width', size - 4); shapEl.setAttribute('height', size - 4);
+    } else if (shape === 'triangle') {
+      shapEl = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      shapEl.setAttribute('points', `${cx},2 ${size-2},${size-2} 2,${size-2}`);
+    } else if (shape === 'pentagon') {
+      const pts = Array.from({length:5}, (_,i) => {
+        const a = (i * 2 * Math.PI / 5) - Math.PI / 2;
+        return `${cx + R*Math.cos(a)},${cy + R*Math.sin(a)}`;
+      }).join(' ');
+      shapEl = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      shapEl.setAttribute('points', pts);
+    }
+
+    shapEl.setAttribute('fill', '#000000');
+    shapEl.setAttribute('stroke', color);
+    shapEl.setAttribute('stroke-width', '3');
+    svg.appendChild(shapEl);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', cx); text.setAttribute('y', cy + 1);
+    text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('fill', 'white');
+    text.setAttribute('font-size', '11');
+    text.setAttribute('font-weight', 'bold');
+    text.setAttribute('font-family', 'IBM Plex Mono');
+    text.textContent = letter;
+    svg.appendChild(text);
+
+    el.appendChild(svg);
+
+    const tip = document.createElement('div');
+    tip.style.cssText = `
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1a1a1e;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 5px 8px;
+      border-radius: 3px;
+      font-size: 10px;
+      color: #ccc;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      font-family: IBM Plex Mono, monospace;
+      z-index: 20;
+    `;
+    tip.innerHTML = tooltip;
+    el.appendChild(tip);
+
+    el.addEventListener('mouseenter', () => tip.style.opacity = '1');
+    el.addEventListener('mouseleave', () => tip.style.opacity = '0');
+
+    layer.appendChild(el);
+  };
+
+const d = datesData[sym];
+
+  (d.earnings_dates || []).forEach(e => {
+    const dateStr = e['Earnings Date'] || e.date || Object.values(e)[0];
+    if (!dateStr) return;
+    const x = dateToX(dateStr);
+    if (!x) return;
+    const surprise = e['Surprise(%)'];
+    const color = surprise == null ? '#ff9800' : surprise >= 0 ? '#4caf50' : '#f44336';
+    const eps = e['Reported EPS'] != null ? `EPS: ${e['Reported EPS']}` : 'Upcoming';
+    const surpriseStr = surprise != null ? ` · Surprise: ${surprise}%` : '';
+    addMarker(x, baseY, 'circle', color, 'E', `${dateStr.slice(0,10)}<br>${eps}${surpriseStr}`);
+  });
+
+  (d.dividends || []).forEach(e => {
+    const dateStr = e.Date || e.date || Object.values(e)[0];
+    if (!dateStr) return;
+    const x = dateToX(dateStr);
+    if (!x) return;
+    const price = stockInfo[sym]?.price;
+    const amt = e.Dividends != null
+      ? (price ? `$${e.Dividends} (${(e.Dividends / price * 100).toFixed(2)}%)` : `$${e.Dividends}`)
+      : 'Upcoming';
+    addMarker(x, baseY, 'square', '#00bcd4', 'D', `${dateStr.slice(0,10)}<br>${amt}`);
+  });
+}
+
+function drawLoading() {
+  gCanvas.width  = gWrap.clientWidth;
+  gCanvas.height = gWrap.clientHeight;
+  const W = gCanvas.width, H = gCanvas.height;
+  const PAD = { top: 24, right: 20, bottom: 36, left: 68 };
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top - PAD.bottom;
+
+  gCtx.fillStyle = '#0a0a0c';
+  gCtx.fillRect(0, 0, W, H);
+  gCtx.fillStyle = '#040405';
+  gCtx.fillRect(PAD.left, PAD.top, chartW, chartH);
+
+  const points = 80;
+  const data = [];
+  let val = 50;
+  for (let i = 0; i < points; i++) {
+    val += 0.3 + (Math.random() - 0.4) * 4;
+    data.push(val);
+  }
+  const minV = Math.min(...data);
+  const maxV = Math.max(...data);
+  const range = maxV - minV || 1;
+  const lo = minV - range * 0.1;
+  const hi = maxV + range * 0.1;
+
+  const xOf = i => PAD.left + (i / (points - 1)) * chartW;
+  const yOf = v => PAD.top + chartH - ((v - lo) / (hi - lo)) * chartH;
+
+  gCtx.save();
+  gCtx.beginPath();
+  gCtx.rect(PAD.left, PAD.top, chartW, chartH);
+  gCtx.clip();
+
+  gCtx.beginPath();
+  data.forEach((v, i) => i === 0 ? gCtx.moveTo(xOf(i), yOf(v)) : gCtx.lineTo(xOf(i), yOf(v)));
+  gCtx.lineTo(xOf(points - 1), PAD.top + chartH);
+  gCtx.lineTo(xOf(0), PAD.top + chartH);
+  gCtx.closePath();
+  const grad = gCtx.createLinearGradient(0, PAD.top, 0, PAD.top + chartH);
+  grad.addColorStop(0, 'rgba(100,100,100,0.15)');
+  grad.addColorStop(1, 'rgba(100,100,100,0)');
+  gCtx.fillStyle = grad;
+  gCtx.fill();
+
+  // Line
+  gCtx.beginPath();
+  gCtx.strokeStyle = 'rgba(120,120,120,0.4)';
+  gCtx.lineWidth = 1.5;
+  gCtx.lineJoin = 'round';
+  data.forEach((v, i) => i === 0 ? gCtx.moveTo(xOf(i), yOf(v)) : gCtx.lineTo(xOf(i), yOf(v)));
+  gCtx.stroke();
+
+  gCtx.restore();
+
+  // LOADING text centered
+  gCtx.fillStyle = 'rgba(180,180,180,0.25)';
+  gCtx.font = '700 14px "IBM Plex Mono"';
+  gCtx.textAlign = 'center';
+  gCtx.textBaseline = 'middle';
+  gCtx.fillText('LOADING...', W / 2, H / 2);
 }
 
 function drawGraph() {
   gCanvas.width  = gWrap.clientWidth;
   gCanvas.height = gWrap.clientHeight;
 
+  if (isLoading) { drawLoading(); return; }
+
   const W = gCanvas.width, H = gCanvas.height;
   const PAD = { top: 24, right: 20, bottom: 36, left: 68 };
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top  - PAD.bottom;
 
-    gCtx.fillStyle = '#0a0a0c';
-    gCtx.fillRect(0, 0, W, H);
-    gCtx.fillStyle = '#040405';
-    gCtx.fillRect(PAD.left, PAD.top, chartW, chartH);
+  gCtx.fillStyle = '#0a0a0c';
+  gCtx.fillRect(0, 0, W, H);
+  gCtx.fillStyle = '#040405';
+  gCtx.fillRect(PAD.left, PAD.top, chartW, chartH);
 
   const allSeries = symbols
     .map(s => ({ sym: s, data: getData(s) }))
@@ -80,26 +304,27 @@ function drawGraph() {
   const longest = allSeries.reduce((a, b) => a.data.length >= b.data.length ? a : b);
   const N = longest.data.length;
 
-  const visiblePoints = Math.min(N, tradingDaysForPeriod(longest.data));
+  const visiblePoints = activeDays === 0 ? N : daysToPoints(longest.data, activeDays);
   const pointSpacing = chartW / Math.max(visiblePoints - 1, 1);
 
+  const rightIdx = Math.max(visiblePoints - 1, Math.round(N - 1 - panOffset / pointSpacing));
+  const anchorIdx = Math.max(0, rightIdx - visiblePoints + 1);
+
   const xOfIndex = (i, dataLen) => {
-    const rightEdge = PAD.left + chartW - panOffset;
-    return rightEdge - (dataLen - 1 - i) * pointSpacing;
+    const rightEdge = PAD.left + chartW;
+    return rightEdge - (rightIdx - i) * pointSpacing;
   };
 
-const normalized = allSeries.map(({ sym, data }) => {
-  let anchorIdx = 0;
-  if (activeDays > 0) {
-    const idx = data.length - visiblePoints;
-    anchorIdx = idx >= 0 ? idx : 0;
-  }
-  const anchorPrice = data[anchorIdx].price;
-  return {
-    sym,
-    data: data.map(d => ({ date: d.date, pct: ((d.price - anchorPrice) / anchorPrice) * 100 }))
-  };
-});  const visibleNorm = normalized.map(({ sym, data }) => {
+  const normalized = allSeries.map(({ sym, data }) => {
+    const anchor = Math.min(anchorIdx, data.length - 1);
+    const anchorPrice = data[anchor].price;
+    return {
+      sym,
+      data: data.map(d => ({ date: d.date, pct: ((d.price - anchorPrice) / anchorPrice) * 100 }))
+    };
+  });
+
+  const visibleNorm = normalized.map(({ sym, data }) => {
     return data.filter((_, i) => {
       const x = xOfIndex(i, data.length);
       return x >= PAD.left && x <= PAD.left + chartW;
@@ -115,7 +340,6 @@ const normalized = allSeries.map(({ sym, data }) => {
 
   const yScale = v => PAD.top + chartH - ((v - lo) / (hi - lo)) * chartH;
 
-  // y grid
   gCtx.font = '10px "IBM Plex Mono"';
   gCtx.textAlign = 'right';
   for (let i = 0; i <= 5; i++) {
@@ -167,13 +391,12 @@ const normalized = allSeries.map(({ sym, data }) => {
 
   gCtx.restore();
 
-  // x axis labels
   gCtx.fillStyle = 'rgba(180,180,180,0.35)';
   gCtx.font = '10px "IBM Plex Mono"';
   gCtx.textAlign = 'center';
   const labelStep = Math.max(1, Math.floor(visiblePoints / 6));
-  for (let i = 0; i < longest.data.length; i += labelStep) {
-    const x = xOfIndex(i, longest.data.length);
+  for (let i = 0; i < N; i += labelStep) {
+    const x = xOfIndex(i, N);
     if (x < PAD.left || x > PAD.left + chartW) continue;
     gCtx.fillText(longest.data[i].date.slice(5), x, H - PAD.bottom + 14);
   }
@@ -189,14 +412,16 @@ const normalized = allSeries.map(({ sym, data }) => {
       lx += gCtx.measureText(sym).width + 18;
     });
   }
+  renderDateMarkers();
 }
 
 let mouseX = -1, mouseY = -1;
 
 gCanvas.addEventListener('mousemove', e => {
   if (isPanning) return;
+  if (isLoading) return;
   const rect = gCanvas.getBoundingClientRect();
-  mouseX = (e.clientX - rect.left) * (gCanvas.width  / rect.width);
+  mouseX = (e.clientX - rect.left) * (gCanvas.width / rect.width);
   mouseY = (e.clientY - rect.top)  * (gCanvas.height / rect.height);
   updateCrosshair(e.clientX, e.clientY);
 });
@@ -217,19 +442,28 @@ function updateCrosshair(cx, cy) {
 
   const longest = allSeries.reduce((a, b) => a.data.length >= b.data.length ? a : b);
   const N = longest.data.length;
-  const visiblePoints = Math.min(N, tradingDaysForPeriod(longest.data));
+  const visiblePoints = activeDays === 0 ? N : daysToPoints(longest.data, activeDays);
   const pointSpacing = chartW / Math.max(visiblePoints - 1, 1);
-  const rightEdge = PAD.left + chartW - panOffset;
-  const rawIdx = (mouseX - rightEdge) / pointSpacing + (N - 1);
-  const idx = Math.max(0, Math.min(N - 1, Math.round(rawIdx)));
+
+  const rightIdx = Math.max(visiblePoints - 1, Math.min(N - 1, Math.round(N - 1 - panOffset / pointSpacing)));
+  const anchorIdx = Math.max(0, rightIdx - visiblePoints + 1);
+
+    const xOfIndex = (i, dataLen) => {
+    const rightEdge = PAD.left + chartW;
+    return rightEdge - (rightIdx - i) * pointSpacing;
+  };
+
+  const idx = Math.max(0, Math.min(N - 1, Math.round(rightIdx - (PAD.left + chartW - mouseX) / pointSpacing)));
   const date = longest.data[idx]?.date;
   if (!date) return;
 
   let html = `<div class="ct-date">${date}</div>`;
   allSeries.forEach(({ sym, data }, i) => {
+    const anchor = Math.min(anchorIdx, data.length - 1);
+    const anchorPrice = data[anchor].price;
     const pt = data.find(d => d.date === date) || data[Math.min(idx, data.length - 1)];
     if (!pt) return;
-    const chg = ((pt.price - data[0].price) / data[0].price) * 100;
+    const chg = ((pt.price - anchorPrice) / anchorPrice) * 100;
     const color = COLORS[i % COLORS.length];
     const sign = chg >= 0 ? '+' : '';
     html += `<div class="ct-row">
@@ -255,7 +489,7 @@ function updateCrosshair(cx, cy) {
 }
 
 gCanvas.addEventListener('mousedown', e => {
-if (e.button !== 0) return;
+  if (e.button !== 0) return;
   isPanning = true;
   panStartX = e.clientX;
   panStartOffset = panOffset;
@@ -264,14 +498,15 @@ if (e.button !== 0) return;
 
 window.addEventListener('mousemove', e => {
   if (!isPanning) return;
+  if (isLoading) return;
   const dx = e.clientX - panStartX;
   const _allData = getData(symbols[0]);
   const _N = _allData.length;
   const _chartW = gCanvas.width - 68 - 20;
-  const _visiblePoints = Math.min(_N, tradingDaysForPeriod(_allData));
+  const _visiblePoints = activeDays === 0 ? _N : daysToPoints(_allData, activeDays);
   const _pointSpacing = _chartW / Math.max(_visiblePoints - 1, 1);
   const maxPan = Math.max(0, (_N - _visiblePoints) * _pointSpacing);
-  panOffset = Math.min(maxPan, panStartOffset - dx);
+  panOffset = panStartOffset + dx
   drawGraph();
 });
 
@@ -304,6 +539,7 @@ async function addSymbol(sym) {
   const curr_first_sym = symbols[0]
   pushURL();
   renderPills();
+  drawLoading();
   await loadSymbol(sym);
   await loadStockInfo();
   panOffset = 0;
@@ -311,9 +547,10 @@ async function addSymbol(sym) {
   renderInfoCards();
   if (prev_first_sym !== curr_first_sym) {
   if (curr_first_sym) {
+    await loadDates(curr_first_sym)
     renderInfoSheet();
     renderNewsSheet();
-    loadTwits(curr_first_sym);
+    loadTwits();
   } else {
     clearInterval(twitsInterval);
     document.getElementById('comments-body').innerHTML = '';
@@ -321,7 +558,7 @@ async function addSymbol(sym) {
 }
 }
 
-function removeSymbol(sym) {
+async function removeSymbol(sym) {
   const prev_first_sym = symbols[0]
   symbols = symbols.filter(s => s !== sym);
   const curr_first_sym = symbols[0]
@@ -332,9 +569,10 @@ function removeSymbol(sym) {
   renderInfoCards();
   if (prev_first_sym !== curr_first_sym) {
   if (curr_first_sym) {
+    await loadDates(curr_first_sym)
     renderInfoSheet();
     renderNewsSheet();
-    loadTwits(curr_first_sym);
+    loadTwits();
   } else {
     clearInterval(twitsInterval);
     document.getElementById('comments-body').innerHTML = '';
@@ -646,20 +884,20 @@ function quickSentiment(headline) {
     'beat', 'raise', 'surge', 'rally', 'growth', 'record', 'upgrade',
     'buy', 'profit', 'gain', 'soar', 'jump', 'climb', 'rise', 'strong',
     'outperform', 'exceed', 'expand', 'boost', 'improve', 'recover',
-    'optimistic', 'bullish', 'positive', 'opportunity', 'breakout',
+    'optimistic', 'bull', 'positive', 'opportunity', 'breakout',
     'rebound', 'win', 'award', 'launch', 'innovation', 'partnership',
     'deal', 'acquire', 'dividend', 'buyback', 'guidance', 'upbeat',
-    'accelerate', 'dominate'
+    'accelerate', 'dominate', 'long', 'best', 'good', 'brilliant', 'surprise', 'undervalue', 'hot', 'safe'
 ];
   const bearish = [
     'miss', 'cut', 'fall', 'decline', 'loss', 'downgrade', 'sell',
     'warn', 'risk', 'drop', 'dump', 'exit', 'offload', 'slump',
     'tumble', 'plunge', 'sink', 'crash', 'weak', 'disappoint', 'layoff',
     'downsize', 'bankruptcy', 'debt', 'lawsuit', 'probe', 'investigation',
-    'fraud', 'recall', 'shortage', 'inflation', 'recession', 'bearish',
+    'fraud', 'recall', 'inflation', 'recession', 'bear',
     'negative', 'concern', 'fear', 'uncertainty', 'volatile', 'penalty',
-    'fine', 'hack', 'breach', 'suspend', 'halt', 'reduce', 'lower',
-    'shrink', 'struggle', 'trouble'
+    'fine', 'hack', 'breach', 'suspend', 'halt', 'reduce', 'lower',                 //worse, worst
+    'shrink', 'struggle', 'trouble', 'short', 'underperform', 'pullback', 'brutal', 'wors', 'bad', 'overvalue'
 ];
   const b = bullish.filter(w => h.includes(w)).length;
   const br = bearish.filter(w => h.includes(w)).length;
@@ -668,13 +906,14 @@ function quickSentiment(headline) {
   return 'Neutral';
 }
 
-async function loadTwits(symbol) {
-  if (twitsInterval) {
-    clearInterval(twitsInterval);
-  }
+async function loadTwits() {
+  if (twitsInterval) clearInterval(twitsInterval);
 
-  await Promise.all([fetchTwits(symbol), renderNewsSheet()]);
-  twitsInterval = setInterval(() => Promise.all([fetchTwits(symbol), renderNewsSheet()]), 40_000);
+  await Promise.all([fetchTwits(symbols[0]), renderNewsSheet()]);
+
+  twitsInterval = setInterval(() => {
+    if (symbols[0]) Promise.all([fetchTwits(symbols[0]), renderNewsSheet()]);
+  }, 40_000);
 }
 
 async function fetchTwits(symbol) {
@@ -752,6 +991,18 @@ async function fetchTwits(symbol) {
   }
 }
 
+let datesData = {}; // symbol > { calendar, dividends, earnings_dates }
+
+async function loadDates(sym) {
+  try {
+    const r = await fetch(`${API}/dates/${encodeURIComponent(sym)}`);
+    if (!r.ok) return;
+    console.log(r)
+    const json = await r.json();
+    datesData[sym] = json.data;
+  } catch(e) { console.warn('Failed to load dates', sym, e); }
+}
+
 let resizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
@@ -785,14 +1036,17 @@ function linkify(text) {
 async function init() {
   parseURL();
   renderPills();
+  drawLoading();
   await Promise.all(symbols.map(loadSymbol));
   await loadStockInfo();
+  if (symbols[0]) await loadDates(symbols[0]);
+  isLoading = false;
   panOffset = 0;
   drawGraph();
   renderInfoCards();
   renderInfoSheet();
   renderNewsSheet();
-  loadTwits(symbols[0]);
+  loadTwits();
 }
 
 init();

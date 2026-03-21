@@ -42,10 +42,16 @@
   </div>
 
   <div id="graph-section">
-    <div id="graph-wrap">
-      <canvas id="graph-canvas"></canvas>
-      <div id="crosshair-tip"></div>
-    </div>
+<div id="graph-wrap">
+  <canvas id="graph-canvas"></canvas>
+  <div id="date-markers-layer"></div>
+  <div id="crosshair-tip"></div>
+  <div id="date-legend">
+    <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#ff9800"/></svg> Earnings</span>
+    <span><svg width="12" height="12"><rect x="1" y="1" width="10" height="10" fill="#00bcd4"/></svg> Dividend</span>
+    <span><svg width="12" height="12"><polygon points="6,1 11,4.5 9,10 3,10 1,4.5" fill="#e91e63"/></svg> Other</span>
+  </div>
+</div>
     <div id="scroll-hint">← DRAG TO SCROLL →</div>
   </div>
 

@@ -457,3 +457,50 @@ a.card-sym {
 .news-expand-btn:hover {
   color: rgba(200,200,200,0.9);
 }
+
+#date-legend {
+  position: absolute;
+  bottom: 6px;
+  left: 72px;
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  color: rgba(180,180,180,0.5);
+  font-family: 'IBM Plex Mono', monospace;
+  pointer-events: none;
+}
+#date-legend span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#date-markers-layer {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+
+#date-markers-layer .marker {
+  position: absolute;
+  pointer-events: all;
+  transform: translate(-50%, -50%);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s;
+}
+
+#date-markers-layer .marker:hover {
+  transform: translate(-50%, -50%) scale(1.3);
+  filter: brightness(1.3);
+  z-index: 10;
+}

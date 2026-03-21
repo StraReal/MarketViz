@@ -1,6 +1,7 @@
 import math
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
+import numpy as np
 from flask import Flask, jsonify, Response, send_file, redirect, url_for, request
 from flask_cors import CORS
 from curl_cffi import requests as cffi_requests
@@ -37,6 +38,20 @@ with open('secrets.json') as f:
     _secrets = json.load(f)
 
 FINNHUB_KEY    = _secrets['finnhub_api_key']
+
+class SafeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+            return None
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return None if (np.isnan(obj) or np.isinf(obj)) else float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
 
 def load_tickers():
     global _tickers_cache, _tickers_loaded_at
@@ -557,19 +572,32 @@ def get_index():
 
 @app.route('/api/stocktwits/<symbol>')
 def stocktwits(symbol):
-    r = cffi_requests.get(
-        f'https://api.stocktwits.com/api/2/streams/symbol/{symbol}.json',
-        impersonate="chrome"
+    session = cffi_requests.Session()
+    r = session.get(
+        f"https://api.stocktwits.com/api/2/streams/symbol/{symbol}.json",
+        impersonate="chrome124",  # try chrome120, chrome124, safari17
+        headers={
+            "Referer": "https://stocktwits.com/symbol/AMD",
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
     )
+    if not r.content:
+        return jsonify({"error": "Empty response from StockTwits"}), 502
+
     if r.status_code != 200:
-        return jsonify({'error': f'status {r.status_code}'}), 502
-    return jsonify(r.json())
+        return jsonify({"error": f"StockTwits returned {r.status_code}"}), 502
+
+    try:
+        return jsonify(r.json())
+    except Exception as e:
+        return jsonify({"error": f"Failed to parse response: {str(e)}"}), 502
 
 @app.route('/api/news/<symbol>')
 def get_news(symbol):
     try:
+        symbol = symbol.replace('-', '.')
         try:
-            from datetime import timedelta
             today = datetime.now().strftime('%Y-%m-%d')
             week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
 
@@ -600,6 +628,65 @@ def get_news(symbol):
     except Exception as e:
         print(f"NEWS ERROR {symbol}: {e}")
         return jsonify({'news': []}), 500
+
+DATES_DIR = "dates"
+os.makedirs(DATES_DIR, exist_ok=True)
+
+def load_dates_cache(symbol):
+    path = f"{DATES_DIR}/{symbol}.json"
+    if os.path.exists(path):
+        with open(path) as f:
+            return json.load(f)
+    return None
+
+def fetch_dates(symbol):
+    t = yf.Ticker(symbol)
+
+    divs = t.dividends.reset_index().to_dict(orient="records")
+
+    upcoming_div = t.calendar.get("Dividend Date") if t.calendar else None
+    if upcoming_div:
+        divs.append({"Date": str(upcoming_div), "Dividends": None})
+
+    calendar = dict(t.calendar) if t.calendar else {}
+    calendar.pop("Ex-Dividend Date", None)
+
+    return {
+        "last_saved": datetime.now().strftime("%Y-%m-%d"),
+        "calendar": calendar,
+        "dividends": divs,
+        "earnings_dates": t.earnings_dates.reset_index().to_dict(
+            orient="records") if t.earnings_dates is not None else [],
+    }
+
+def sanitize(obj):
+    if isinstance(obj, dict):
+        return {k: sanitize(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize(v) for v in obj]
+    elif isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+        return None
+    return obj
+
+def save_dates_cache(symbol, data):
+    path = f"{DATES_DIR}/{symbol}.json"
+    with open(path, "w") as f:
+        json.dump(sanitize(data), f, cls=SafeEncoder, indent=2)
+
+@app.route('/api/dates/<symbol>')
+def dates(symbol):
+    symbol = symbol.upper()
+    cached = load_dates_cache(symbol)
+
+    if cached and cached.get("last_saved") == datetime.now().strftime("%Y-%m-%d"):
+        return jsonify({"source": "cache", "data": cached})
+
+    data = fetch_dates(symbol)
+    save_dates_cache(symbol, data)
+    return app.response_class(
+        response=json.dumps({"source": "fetched", "data": sanitize(data)}, cls=SafeEncoder),
+        mimetype='application/json'
+    )
 
 def schedule_fetch():
     while True:
