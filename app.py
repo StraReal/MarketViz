@@ -1,5 +1,5 @@
 import math
-from datetime import datetime
+from datetime import datetime, date
 
 from flask import Flask, jsonify, Response, send_file, redirect, url_for, request
 from flask_cors import CORS
@@ -178,18 +178,22 @@ def fetch_one(ticker_name):
             return None
 
         try:
-            hist = tick.history(period='1y')
             existing = load_history(ticker_name)
-            for row in hist.itertuples():
-                date = str(row.Index.date())
-                existing[date] = {
-                    'open': round(row.Open, 4),
-                    'high': round(row.High, 4),
-                    'low': round(row.Low, 4),
-                    'close': round(row.Close, 4),
-                    'volume': int(row.Volume)
-                }
-            save_history(ticker_name, dict(sorted(existing.items())))
+            today = str(date.today())
+            last_date = max(existing.keys()) if existing else None
+
+            if last_date != today:
+                hist = tick.history(period='1y')
+                for row in hist.itertuples():
+                    date_str = str(row.Index.date())
+                    existing[date_str] = {
+                        'open': round(row.Open, 4),
+                        'high': round(row.High, 4),
+                        'low': round(row.Low, 4),
+                        'close': round(row.Close, 4),
+                        'volume': int(row.Volume)
+                    }
+                save_history(ticker_name, dict(sorted(existing.items())))
         except Exception as e:
             print(f"HISTORY ERROR {ticker_name}: {e}")
 
@@ -209,7 +213,6 @@ def fetch_one(ticker_name):
             return None
         print(f"ERROR {ticker_name}: {e}")
         return None
-
 
 def worker_loop(ticker_slice, worker_id):
     i = 0

@@ -673,8 +673,8 @@ async function loadTwits(symbol) {
     clearInterval(twitsInterval);
   }
 
-  await fetchTwits(symbol);
-  twitsInterval = setInterval(() => fetchTwits(symbol), 40_000);
+  await Promise.all([fetchTwits(symbol), renderNewsSheet()]);
+  twitsInterval = setInterval(() => Promise.all([fetchTwits(symbol), renderNewsSheet()]), 40_000);
 }
 
 async function fetchTwits(symbol) {
