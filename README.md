@@ -18,3 +18,5 @@
 Theoretically just running app.py and going to http://127.0.0.1:5000/viz should lead you to the main visualization no problem, from which you can then visit all the various parts of the suite.
 
 I highly recommend not stopping the program and restarting it again quickly, this will send lots of requests to yfinance and get you rate limited.
+
+#### !! This is only supposed for personal use, as it uses scraping to gather data !!
