@@ -57,7 +57,6 @@ function tradingDaysForPeriod(data) {
   return Math.round(activeDays * 5 / 7);
 }
 
-
 function drawGraph() {
   gCanvas.width  = gWrap.clientWidth;
   gCanvas.height = gWrap.clientHeight;
@@ -354,7 +353,6 @@ document.getElementById('sym-input').addEventListener('keydown', e => {
     e.target.value = '';
   }
 });
-
 
 document.querySelectorAll('.period-btn').forEach(btn => {
   btn.addEventListener('click', () => {

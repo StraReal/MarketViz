@@ -210,37 +210,35 @@ def fetch_one(ticker_name):
         print(f"ERROR {ticker_name}: {e}")
         return None
 
-def fetch_all(fetchfor=None):
-    global done, tickers, stocks
-    done = False
-    rate_limited_event.clear()
-
-    try:
-        all_tickers = load_tickers()
-        tickers = [t for t in all_tickers if t.replace('.', '-') in fetchfor] if fetchfor else all_tickers
-    except Exception as e:
-        print(f"Failed to load tickers: {e}")
-        done = True
-        return
-
-    completed = []
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        futures = {executor.submit(fetch_one, t): t for t in tickers}
-        for future in as_completed(futures):
-            if stop_event.is_set() or rate_limited_event.is_set():
-                executor.shutdown(wait=False, cancel_futures=True)
-                done = True
-                print("Fetch stopped due to rate limiting, will retry next cycle.")
+def worker_loop(ticker_slice, worker_id):
+    while not stop_event.is_set():
+        rate_limited_event.clear()
+        for ticker in ticker_slice:
+            if stop_event.is_set():
                 return
-            result = future.result()
+            if rate_limited_event.is_set():
+                print(f"Worker {worker_id} rate limited, backing off...")
+                time.sleep(60)
+                rate_limited_event.clear()
+            result = fetch_one(ticker)
             if result:
                 with lock:
                     stocks[result['symbol']] = result
-                    completed.append(result['symbol'])
-                print(f"({len(stocks)} loaded)")
+        print(f"Worker {worker_id} completed pass, restarting...")
 
-    done = True
-    print(f"Done. {len(stocks)} stocks loaded.")
+def fetch_all():
+    all_tickers = load_tickers()
+    mid = len(all_tickers) // 2
+    slices = [all_tickers[:mid], all_tickers[mid:]]
+
+    threads = []
+    for i, slice in enumerate(slices):
+        t = threading.Thread(target=worker_loop, args=(slice, i), daemon=True)
+        t.start()
+        threads.append(t)
+
+    for t in threads:
+        t.join()
 
 HISTORY_DIR = 'history'
 os.makedirs(HISTORY_DIR, exist_ok=True)
