@@ -198,9 +198,15 @@ const d = datesData[sym];
     if (!x) return;
     const surprise = e['Surprise(%)'];
     const color = surprise == null ? '#ff9800' : surprise >= 0 ? '#4caf50' : '#f44336';
-    const eps = e['Reported EPS'] != null ? `EPS: ${e['Reported EPS']}` : 'Upcoming';
+    const eps = e['Reported EPS'] != null ? `EPS: ${e['Reported EPS']}` : '';
     const surpriseStr = surprise != null ? ` · Surprise: ${surprise}%` : '';
+    const expectedEps = e['EPS Estimate'] != null ? `Expected EPS: ${e['EPS Estimate']}` : '';
+    if (e['Reported EPS']) {
     addMarker(x, baseY, 'circle', color, 'E', `${dateStr.slice(0,10)}<br>${eps}${surpriseStr}`);
+    }
+    else {
+    addMarker(x, baseY, 'circle', color, 'E', `${dateStr.slice(0,10)} - Upcoming<br>${expectedEps}`);
+    }
   });
 
   (d.dividends || []).forEach(e => {
@@ -212,7 +218,13 @@ const d = datesData[sym];
     const amt = e.Dividends != null
       ? (price ? `$${e.Dividends} (${(e.Dividends / price * 100).toFixed(2)}%)` : `$${e.Dividends}`)
       : 'Upcoming';
-    addMarker(x, baseY, 'square', '#00bcd4', 'D', `${dateStr.slice(0,10)}<br>${amt}`);
+    addMarker(x, baseY, 'square', '#00bcd4', 'X', `${dateStr.slice(0,10)} - Ex-Div<br>${amt}`);
+
+  const divDate = d.calendar["Dividend Date"]
+    if (!divDate) return;
+    const dx = dateToX(divDate);
+    if (!dx) return;
+    addMarker(dx, baseY, 'square', '#9f09c4', 'D', `${divDate.slice(0,10)} - Div<br>Upcoming`);
   });
 }
 
@@ -271,7 +283,6 @@ function drawLoading() {
 
   gCtx.restore();
 
-  // LOADING text centered
   gCtx.fillStyle = 'rgba(180,180,180,0.25)';
   gCtx.font = '700 14px "IBM Plex Mono"';
   gCtx.textAlign = 'center';
@@ -445,7 +456,7 @@ function updateCrosshair(cx, cy) {
   const visiblePoints = activeDays === 0 ? N : daysToPoints(longest.data, activeDays);
   const pointSpacing = chartW / Math.max(visiblePoints - 1, 1);
 
-  const rightIdx = Math.max(visiblePoints - 1, Math.min(N - 1, Math.round(N - 1 - panOffset / pointSpacing)));
+  const rightIdx = Math.max(visiblePoints - 1, Math.round(N - 1 - panOffset / pointSpacing));
   const anchorIdx = Math.max(0, rightIdx - visiblePoints + 1);
 
     const xOfIndex = (i, dataLen) => {
@@ -565,6 +576,7 @@ async function removeSymbol(sym) {
   pushURL();
   renderPills();
   panOffset = 0;
+  drawLoading();
   drawGraph();
   renderInfoCards();
   if (prev_first_sym !== curr_first_sym) {
@@ -808,10 +820,24 @@ async function renderNewsSheet() {
     const news = data.news || [];
     newsBody.innerHTML = '';
 
-    if (!news.length) {
+    if (r.status === 401) {
       const el = document.createElement('div');
       el.style.cssText = `
         background: rgba(255,200,200,0.08);
+        border-left: 3px solid #f9c045;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #aaa;
+      `;
+      el.textContent = 'Finnhub API key is missing';
+      newsBody.appendChild(el);
+      return;
+    }
+    if (!news.length) {
+      const el = document.createElement('div');
+      el.style.cssText = `
+        background: rgba(255,220,200,0.1);
         border-left: 3px solid #f44336;
         padding: 8px 12px;
         border-radius: 4px;
@@ -887,7 +913,8 @@ function quickSentiment(headline) {
     'optimistic', 'bull', 'positive', 'opportunity', 'breakout',
     'rebound', 'win', 'award', 'launch', 'innovation', 'partnership',
     'deal', 'acquire', 'dividend', 'buyback', 'guidance', 'upbeat',
-    'accelerate', 'dominate', 'long', 'best', 'good', 'brilliant', 'surprise', 'undervalue', 'hot', 'safe'
+    'accelerate', 'dominate', 'long', 'best', 'good', 'brilliant', 'surprise', 'undervalue', 'hot', 'safe', 'perfect', 'hope',
+    'trend', 'upside'
 ];
   const bearish = [
     'miss', 'cut', 'fall', 'decline', 'loss', 'downgrade', 'sell',
@@ -896,8 +923,9 @@ function quickSentiment(headline) {
     'downsize', 'bankruptcy', 'debt', 'lawsuit', 'probe', 'investigation',
     'fraud', 'recall', 'inflation', 'recession', 'bear',
     'negative', 'concern', 'fear', 'uncertainty', 'volatile', 'penalty',
-    'fine', 'hack', 'breach', 'suspend', 'halt', 'reduce', 'lower',                 //worse, worst
-    'shrink', 'struggle', 'trouble', 'short', 'underperform', 'pullback', 'brutal', 'wors', 'bad', 'overvalue'
+    'fine', 'hack', 'breach', 'suspend', 'halt', 'reduce', 'lower',                 //worse, worst                         //scary, scare
+    'shrink', 'struggle', 'trouble', 'short', 'underperform', 'pullback', 'brutal', 'wors', 'bad', 'overvalue', 'terrify', 'scar', 'drop',
+    'flee', 'downside'
 ];
   const b = bullish.filter(w => h.includes(w)).length;
   const br = bearish.filter(w => h.includes(w)).length;

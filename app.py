@@ -33,11 +33,28 @@ _tickers_cache = None
 _tickers_loaded_at = None
 TICKERS_TTL = 3600
 
+SECRETS_FILE = 'secrets.json'
 
-with open('secrets.json') as f:
-    _secrets = json.load(f)
+REQUIRED_KEYS = ['finnhub_api_key']
 
-FINNHUB_KEY    = _secrets['finnhub_api_key']
+if os.path.exists(SECRETS_FILE):
+    with open(SECRETS_FILE) as f:
+        content = f.read().strip()
+        _secrets = json.loads(content) if content else {}
+else:
+    _secrets = {}
+
+changed = False
+for key in REQUIRED_KEYS:
+    if key not in _secrets:
+        _secrets[key] = ''
+        changed = True
+
+if changed:
+    with open(SECRETS_FILE, 'w') as f:
+        json.dump(_secrets, f, indent=2)
+
+FINNHUB_KEY = _secrets.get('finnhub_api_key', '')
 
 class SafeEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -595,6 +612,8 @@ def stocktwits(symbol):
 
 @app.route('/api/news/<symbol>')
 def get_news(symbol):
+    if not FINNHUB_KEY:
+        return jsonify({"error": "Missing Finnhub API Key"}), 401
     try:
         symbol = symbol.replace('-', '.')
         try:
@@ -643,10 +662,6 @@ def fetch_dates(symbol):
     t = yf.Ticker(symbol)
 
     divs = t.dividends.reset_index().to_dict(orient="records")
-
-    upcoming_div = t.calendar.get("Dividend Date") if t.calendar else None
-    if upcoming_div:
-        divs.append({"Date": str(upcoming_div), "Dividends": None})
 
     calendar = dict(t.calendar) if t.calendar else {}
     calendar.pop("Ex-Dividend Date", None)

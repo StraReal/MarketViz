@@ -5,13 +5,13 @@
 
 ### API Keys
 
-- **Finnhub** (optional) — used for stock news. Get a free key at https://finnhub.io/. Without it, the news section will be empty.
+- **Finnhub** (optional) - used for stock news. Get a free key at https://finnhub.io/. Without it, the news section will be empty.
 
 ### Data Sources
 
-- **yfinance** — fundamental indicators, prices, and price history
-- **Finnhub** — news articles per stock
-- **StockTwits** — real-time comments and sentiment on stocks
+- **yfinance** - fundamental indicators, prices, and price history
+- **Finnhub** - news articles per stock
+- **StockTwits** - real-time comments and sentiment on stocks
 
 ### Notes
 
