@@ -37,7 +37,7 @@ const Portfolios = {
   },
 
   async addHolding(portfolioName, symbol, shares, priceAtBuy) {
-    const r = await fetch(`${API}/portfolios/${encodeURIComponent(portfolioName)}/holding`, {
+    const r = await fetch(`${API}/portfolios/${encodeURIComponent(portfolioName)}/buy`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({

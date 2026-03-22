@@ -223,24 +223,15 @@ const d = datesData[sym];
   const divDate = d.calendar["Dividend Date"]
     if (!divDate) return;
     const dx = dateToX(divDate);
+    const amtT = divDate.Dividends != null
+      ? (price ? `$${divDate.Dividends} (${(divDate.Dividends / price * 100).toFixed(2)}%)` : `$${divDate.Dividends}`)
+      : 'Upcoming';
     if (!dx) return;
-    addMarker(dx, baseY, 'square', '#9f09c4', 'D', `${divDate.slice(0,10)} - Div<br>Upcoming`);
+    addMarker(dx, baseY, 'square', '#9f09c4', 'D', `${divDate.slice(0,10)} - Div<br>${amtT}`);
   });
 }
 
-function drawLoading() {
-  gCanvas.width  = gWrap.clientWidth;
-  gCanvas.height = gWrap.clientHeight;
-  const W = gCanvas.width, H = gCanvas.height;
-  const PAD = { top: 24, right: 20, bottom: 36, left: 68 };
-  const chartW = W - PAD.left - PAD.right;
-  const chartH = H - PAD.top - PAD.bottom;
-
-  gCtx.fillStyle = '#0a0a0c';
-  gCtx.fillRect(0, 0, W, H);
-  gCtx.fillStyle = '#040405';
-  gCtx.fillRect(PAD.left, PAD.top, chartW, chartH);
-
+const loadingData = (() => {
   const points = 80;
   const data = [];
   let val = 50;
@@ -248,46 +239,78 @@ function drawLoading() {
     val += 0.3 + (Math.random() - 0.4) * 4;
     data.push(val);
   }
-  const minV = Math.min(...data);
-  const maxV = Math.max(...data);
-  const range = maxV - minV || 1;
-  const lo = minV - range * 0.1;
-  const hi = maxV + range * 0.1;
+  return data;
+})();
 
-  const xOf = i => PAD.left + (i / (points - 1)) * chartW;
-  const yOf = v => PAD.top + chartH - ((v - lo) / (hi - lo)) * chartH;
+let loadingAnimFrame = null;
+let loadingStartTime = null;
 
-  gCtx.save();
-  gCtx.beginPath();
-  gCtx.rect(PAD.left, PAD.top, chartW, chartH);
-  gCtx.clip();
+function drawLoading() {
+  if (loadingAnimFrame) cancelAnimationFrame(loadingAnimFrame);
 
-  gCtx.beginPath();
-  data.forEach((v, i) => i === 0 ? gCtx.moveTo(xOf(i), yOf(v)) : gCtx.lineTo(xOf(i), yOf(v)));
-  gCtx.lineTo(xOf(points - 1), PAD.top + chartH);
-  gCtx.lineTo(xOf(0), PAD.top + chartH);
-  gCtx.closePath();
-  const grad = gCtx.createLinearGradient(0, PAD.top, 0, PAD.top + chartH);
-  grad.addColorStop(0, 'rgba(100,100,100,0.15)');
-  grad.addColorStop(1, 'rgba(100,100,100,0)');
-  gCtx.fillStyle = grad;
-  gCtx.fill();
+  const animate = (timestamp) => {
+    if (!isLoading) return;
+    if (!loadingStartTime) loadingStartTime = timestamp;
+    const elapsed = timestamp - loadingStartTime;
+    const pulse = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(elapsed / 600));
 
-  // Line
-  gCtx.beginPath();
-  gCtx.strokeStyle = 'rgba(120,120,120,0.4)';
-  gCtx.lineWidth = 1.5;
-  gCtx.lineJoin = 'round';
-  data.forEach((v, i) => i === 0 ? gCtx.moveTo(xOf(i), yOf(v)) : gCtx.lineTo(xOf(i), yOf(v)));
-  gCtx.stroke();
+    gCanvas.width  = gWrap.clientWidth;
+    gCanvas.height = gWrap.clientHeight;
+    const W = gCanvas.width, H = gCanvas.height;
+    const PAD = { top: 24, right: 20, bottom: 36, left: 68 };
+    const chartW = W - PAD.left - PAD.right;
+    const chartH = H - PAD.top - PAD.bottom;
 
-  gCtx.restore();
+    gCtx.fillStyle = '#0a0a0c';
+    gCtx.fillRect(0, 0, W, H);
+    gCtx.fillStyle = '#040405';
+    gCtx.fillRect(PAD.left, PAD.top, chartW, chartH);
 
-  gCtx.fillStyle = 'rgba(180,180,180,0.25)';
-  gCtx.font = '700 14px "IBM Plex Mono"';
-  gCtx.textAlign = 'center';
-  gCtx.textBaseline = 'middle';
-  gCtx.fillText('LOADING...', W / 2, H / 2);
+    const data = loadingData;
+    const minV = Math.min(...data);
+    const maxV = Math.max(...data);
+    const range = maxV - minV || 1;
+    const lo = minV - range * 0.1;
+    const hi = maxV + range * 0.1;
+
+    const xOf = i => PAD.left + (i / (data.length - 1)) * chartW;
+    const yOf = v => PAD.top + chartH - ((v - lo) / (hi - lo)) * chartH;
+
+    gCtx.save();
+    gCtx.beginPath();
+    gCtx.rect(PAD.left, PAD.top, chartW, chartH);
+    gCtx.clip();
+
+    gCtx.beginPath();
+    data.forEach((v, i) => i === 0 ? gCtx.moveTo(xOf(i), yOf(v)) : gCtx.lineTo(xOf(i), yOf(v)));
+    gCtx.lineTo(xOf(data.length - 1), PAD.top + chartH);
+    gCtx.lineTo(xOf(0), PAD.top + chartH);
+    gCtx.closePath();
+    const grad = gCtx.createLinearGradient(0, PAD.top, 0, PAD.top + chartH);
+    grad.addColorStop(0, `rgba(100,100,100,${0.15 * pulse})`);
+    grad.addColorStop(1, 'rgba(100,100,100,0)');
+    gCtx.fillStyle = grad;
+    gCtx.fill();
+
+    gCtx.beginPath();
+    gCtx.strokeStyle = `rgba(120,120,120,${0.4 * pulse})`;
+    gCtx.lineWidth = 1.5;
+    gCtx.lineJoin = 'round';
+    data.forEach((v, i) => i === 0 ? gCtx.moveTo(xOf(i), yOf(v)) : gCtx.lineTo(xOf(i), yOf(v)));
+    gCtx.stroke();
+    gCtx.restore();
+
+    gCtx.fillStyle = `rgba(180,180,180,${0.25 * pulse})`;
+    gCtx.font = '700 14px "IBM Plex Mono"';
+    gCtx.textAlign = 'center';
+    gCtx.textBaseline = 'middle';
+    gCtx.fillText('LOADING...', W / 2, H / 2);
+
+    loadingAnimFrame = requestAnimationFrame(animate);
+  };
+
+  loadingStartTime = null;
+  loadingAnimFrame = requestAnimationFrame(animate);
 }
 
 function drawGraph() {
@@ -327,7 +350,9 @@ function drawGraph() {
   };
 
   const normalized = allSeries.map(({ sym, data }) => {
-    const anchor = Math.min(anchorIdx, data.length - 1);
+    const offset = longest.data.length - data.length;
+    const adjustedAnchor = Math.max(0, anchorIdx - offset);
+    const anchor = Math.min(adjustedAnchor, data.length - 1);
     const anchorPrice = data[anchor].price;
     return {
       sym,
@@ -367,6 +392,23 @@ function drawGraph() {
     gCtx.stroke();
   }
 
+  const zeroY = yScale(0);
+  if (zeroY >= PAD.top && zeroY <= PAD.top + chartH) {
+    gCtx.beginPath();
+    gCtx.setLineDash([6, 4]);
+    gCtx.strokeStyle = 'rgba(255,255,255,0.2)';
+    gCtx.lineWidth = 1;
+    gCtx.moveTo(PAD.left, zeroY);
+    gCtx.lineTo(PAD.left + chartW, zeroY);
+    gCtx.stroke();
+    gCtx.setLineDash([]);
+
+    gCtx.fillStyle = 'rgba(255,255,255,0.3)';
+    gCtx.font = '10px "IBM Plex Mono"';
+    gCtx.textAlign = 'right';
+    gCtx.fillText('0%', PAD.left - 6, zeroY + 3);
+  }
+
   gCtx.save();
   gCtx.beginPath();
   gCtx.rect(PAD.left, PAD.top, chartW, chartH);
@@ -375,14 +417,16 @@ function drawGraph() {
   normalized.forEach(({ sym, data }, idx) => {
     if (data.length < 2) return;
     const color = COLORS[idx % COLORS.length];
-    const xs = i => xOfIndex(i, data.length);
+    const offset = longest.data.length - data.length;
+    const xs = i => xOfIndex(i + offset, data.length);
+    const startX = xs(0);
 
     gCtx.beginPath();
     data.forEach((d, i) => {
       i === 0 ? gCtx.moveTo(xs(i), yScale(d.pct)) : gCtx.lineTo(xs(i), yScale(d.pct));
     });
     gCtx.lineTo(xs(data.length - 1), PAD.top + chartH);
-    gCtx.lineTo(xs(0), PAD.top + chartH);
+    gCtx.lineTo(startX, PAD.top + chartH);  // ← use startX instead of xs(0) recalculated
     gCtx.closePath();
     const grad = gCtx.createLinearGradient(0, PAD.top, 0, PAD.top + chartH);
     grad.addColorStop(0, hexAlpha(color, 0.18));
@@ -627,8 +671,12 @@ function renderInfoSheet() {
   const lastPrice  = hist?.length ? hist[hist.length - 1].price : null;
   const firstPrice = hist?.length ? hist[0].price : null;
   const totalChg   = (lastPrice && firstPrice) ? ((lastPrice - firstPrice) / firstPrice) * 100 : null;
-  const fcfPerShare = s.free_cashflow / s.shares_outstanding;
-  const pToFcf = s.price / fcfPerShare;
+  const fcfPerShare = s?.free_cashflow && s?.shares_outstanding
+  ? s.free_cashflow / s.shares_outstanding
+  : null;
+const pToFcf = s?.price && fcfPerShare
+  ? s.price / fcfPerShare
+  : null;
 
   const dayChg  = s?.change;
   const daySign = dayChg  != null ? (dayChg  >= 0 ? '+' : '') : '';
@@ -953,6 +1001,20 @@ async function fetchTwits(symbol) {
     const data = await r.json();
     body.innerHTML = '';
 
+  if (r.status === 403) {
+    const el = document.createElement('div');
+    el.style.cssText = `
+      background: rgba(255,200,200,0.08);
+      border-left: 3px solid #f9c045;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #aaa;
+    `;
+    el.textContent = 'Request blocked.';
+    body.appendChild(el);
+    return;
+  }
   if (!data.messages?.length) {
     const el = document.createElement('div');
     el.style.cssText = `
@@ -977,8 +1039,8 @@ async function fetchTwits(symbol) {
 
       toShow.forEach(msg => {
         const sentiment = msg.entities?.sentiment?.basic;
-        const color = sentiment === 'Bullish' ? '#4caf50' : sentiment === 'Bearish' ? '#f44336' : 'var(--border)';
-
+        const color = getSentimentColor(sentiment)
+        const linkColor = sentiment === 'Bullish' || sentiment === 'Bearish' ? color : '#41acbf';
         const el = document.createElement('div');
         el.className = 'twit-item';
         el.style.cssText = `
@@ -998,7 +1060,7 @@ async function fetchTwits(symbol) {
             <span style="color: #555">${new Date(msg.created_at).toLocaleTimeString()}</span>
           </div>
           ${sentiment ? `<div style="color:${color}; font-size:11px; margin-bottom: 4px;">${sentiment}</div>` : ''}
-          <div>${linkify(msg.body)}</div>
+          <div>${linkifyTickers(linkify(msg.body, linkColor), linkColor)}</div>
         `;
         body.appendChild(el);
       });
@@ -1056,9 +1118,22 @@ function hexAlpha(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function linkify(text) {
-  return text
-    .replace(/https?:\/\/[^\s]+/g, url => `<a href="${url}" target="_blank" style="color:#4caf50;text-decoration:underline;cursor:pointer">${url}</a>`);
+function getSentimentColor(sentiment) {
+  if (sentiment === "Bullish") return '#4caf50';
+  if (sentiment === "Bearish") return '#f44336';
+  return 'var(--border)';
+}
+
+function linkify(text, color) {
+  return text.replace(/https?:\/\/[^\s]+/g, url =>
+    `<a href="${url}" target="_blank" style="color:${color};text-decoration:underline;cursor:pointer">${url}</a>`
+  );
+}
+
+function linkifyTickers(text, color) {
+  return text.replace(/\$([A-Z]{1,5})/g, (match, ticker) =>
+    `<a href="/stock?symbols=${ticker}" target="_blank" style="color:${color};text-decoration:none;font-weight:700">${match}</a>`
+  );
 }
 
 async function init() {
@@ -1069,6 +1144,7 @@ async function init() {
   await loadStockInfo();
   if (symbols[0]) await loadDates(symbols[0]);
   isLoading = false;
+  if (loadingAnimFrame) { cancelAnimationFrame(loadingAnimFrame); loadingAnimFrame = null; }
   panOffset = 0;
   drawGraph();
   renderInfoCards();

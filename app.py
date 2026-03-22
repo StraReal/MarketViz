@@ -12,8 +12,18 @@ import threading
 import json
 import time
 import os
+import random
 import csv
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import logging
+
+log = logging.getLogger('werkzeug')
+
+class NoIndexFilter(logging.Filter):
+    def filter(self, record):
+        return '/api/index' not in record.getMessage()
+
+log.addFilter(NoIndexFilter())
 
 app = Flask(__name__,static_folder='frontend/static', static_url_path='/static')
 CORS(app)
@@ -590,25 +600,26 @@ def get_index():
 @app.route('/api/stocktwits/<symbol>')
 def stocktwits(symbol):
     session = cffi_requests.Session()
+    impersonate = random.choice(["chrome120", "chrome124", "chrome116", "chrome110", "edge99", "edge101"])
     r = session.get(
         f"https://api.stocktwits.com/api/2/streams/symbol/{symbol}.json",
-        impersonate="chrome124",  # try chrome120, chrome124, safari17
+        impersonate=impersonate,
         headers={
             "Referer": "https://stocktwits.com/symbol/AMD",
             "Accept": "application/json, text/plain, */*",
             "Accept-Language": "en-US,en;q=0.9",
         }
     )
+
+    if r.status_code == 403:
+        print(json.dumps(r.text, indent=2))
+        return jsonify({"error": "StockTwits API rate limit exceeded"}), 403
+    if r.status_code != 200:
+        return jsonify({"error": f"StockTwits returned {r.status_code}"}), 502
     if not r.content:
         return jsonify({"error": "Empty response from StockTwits"}), 502
 
-    if r.status_code != 200:
-        return jsonify({"error": f"StockTwits returned {r.status_code}"}), 502
-
-    try:
-        return jsonify(r.json())
-    except Exception as e:
-        return jsonify({"error": f"Failed to parse response: {str(e)}"}), 502
+    return jsonify(r.json())
 
 @app.route('/api/news/<symbol>')
 def get_news(symbol):
@@ -659,20 +670,23 @@ def load_dates_cache(symbol):
     return None
 
 def fetch_dates(symbol):
-    t = yf.Ticker(symbol)
+    try:
+        t = yf.Ticker(symbol)
 
-    divs = t.dividends.reset_index().to_dict(orient="records")
+        divs = t.dividends.reset_index().to_dict(orient="records")
 
-    calendar = dict(t.calendar) if t.calendar else {}
-    calendar.pop("Ex-Dividend Date", None)
+        calendar = dict(t.calendar) if t.calendar else {}
+        calendar.pop("Ex-Dividend Date", None)
 
-    return {
-        "last_saved": datetime.now().strftime("%Y-%m-%d"),
-        "calendar": calendar,
-        "dividends": divs,
-        "earnings_dates": t.earnings_dates.reset_index().to_dict(
-            orient="records") if t.earnings_dates is not None else [],
-    }
+        return {
+            "last_saved": datetime.now().strftime("%Y-%m-%d"),
+            "calendar": calendar,
+            "dividends": divs,
+            "earnings_dates": t.earnings_dates.reset_index().to_dict(
+                orient="records") if t.earnings_dates is not None else [],
+        }
+    except Exception as e:
+        print(f"DATE FETCH ERROR {symbol}: {e}")
 
 def sanitize(obj):
     if isinstance(obj, dict):
