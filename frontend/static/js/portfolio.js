@@ -11,6 +11,17 @@ let currentView = 'heatmap';
 document.getElementById('btn-heatmap').addEventListener('click', () => setView('heatmap'));
 document.getElementById('btn-graph').addEventListener('click', () => setView('graph'));
 
+const openWindows = {};
+
+function openPage(path, name) {
+  if (openWindows[path] && !openWindows[path].closed) {
+    openWindows[path].focus();
+  } else {
+    openWindows[path] = window.open('/' + path, name);
+  }
+  window.close();
+}
+
 const Portfolios = {
   cache: {},
 

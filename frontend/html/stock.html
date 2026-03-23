@@ -13,12 +13,10 @@
 <div id="header">
   <span class="header-title" id="header-title">Stock</span>
   <div class="header-sep"></div>
-  <span class="header-title" id="header-performance">—</span>
-  <div class="header-sep"></div>
-    <div class="header-rectangle">
-    <a href="/viz" class="rect-section" style="flex: 1.6;">Main Visualization</a>
-    <a href="/portfolio_browser" class="rect-section" style="flex: 1.2;">Portfolios</a>
-    <a href="/stock" class="rect-section">Stocks</a>
+  <div class="header-rectangle">
+    <button onclick="openPage('viz', 'Main Visualization')" class="rect-section" style="flex: 1.6;">Main Visualization</button>
+    <button onclick="openPage('portfolio_browser', 'Portfolios')" class="rect-section" style="flex: 1.2;">Portfolios</button>
+    <button onclick="openPage('stock', 'Stocks')" class="rect-section">Stocks</button>
   </div>
 </div>
     </header>

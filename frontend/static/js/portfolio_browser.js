@@ -1,5 +1,16 @@
 const API = 'http://localhost:5000/api';
 
+const openWindows = {};
+
+function openPage(path, name) {
+  if (openWindows[path] && !openWindows[path].closed) {
+    openWindows[path].focus();
+  } else {
+    openWindows[path] = window.open('/' + path, name);
+  }
+  window.close();
+}
+
 async function loadPortfolios() {
   const [portfoliosRes, stocksRes] = await Promise.all([
     fetch(`${API}/portfolios`),

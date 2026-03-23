@@ -6,6 +6,18 @@ let coloring = 0;
 let max_coloring = 5;
 let selectedSymbol = null;
 let sidebarOpen = false;
+
+const openWindows = {};
+
+function openPage(path, name) {
+  if (openWindows[path] && !openWindows[path].closed) {
+    openWindows[path].focus();
+  } else {
+    openWindows[path] = window.open('/' + path, name);
+  }
+  window.close();
+}
+
 const Portfolios = {
   cache: {},
 

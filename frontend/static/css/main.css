@@ -76,6 +76,8 @@ html, body {
   justify-content: center;
   align-items: center;
   color: var(--accent);
+  background: var(--surface);
+  border: var(--border);
   text-decoration: none;
   font-weight: bold;
   cursor: pointer;

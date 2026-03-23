@@ -17,6 +17,17 @@ const gCanvas = document.getElementById('graph-canvas');
 const gCtx    = gCanvas.getContext('2d');
 const tip     = document.getElementById('crosshair-tip');
 
+const openWindows = {};
+
+function openPage(path, name) {
+  if (openWindows[path] && !openWindows[path].closed) {
+    openWindows[path].focus();
+  } else {
+    openWindows[path] = window.open('/' + path, name);
+  }
+  window.close();
+}
+
 function parseURL() {
   const p = new URLSearchParams(window.location.search);
   const s = p.get('symbols');
