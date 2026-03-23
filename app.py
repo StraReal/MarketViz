@@ -733,4 +733,4 @@ if __name__ == '__main__':
     fetch_thread = threading.Thread(target=fetch_all, daemon=True)
     fetch_thread.start()
     threading.Thread(target=schedule_fetch, daemon=True).start()
-    app.run(debug=False, port=5000, threaded=True)
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)

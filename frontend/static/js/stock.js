@@ -1,4 +1,4 @@
-const API = 'http://localhost:5000/api';
+const API = `${window.location.origin}/api`;
 const COLORS = ['#4caf50','#2196f3','#ff9800','#e91e63','#9c27b0','#00bcd4'];
 
 let symbols   = [];
@@ -331,7 +331,13 @@ function drawGraph() {
   if (isLoading) { drawLoading(); return; }
 
   const W = gCanvas.width, H = gCanvas.height;
-  const PAD = { top: 24, right: 20, bottom: 36, left: 68 };
+  const PAD_PERCENT = { top: 0.04, right: 0.01, bottom: 0.08, left: 0.03 };
+  const PAD = {
+    top: H * PAD_PERCENT.top,
+    right: W * PAD_PERCENT.right,
+    bottom: H * PAD_PERCENT.bottom,
+    left: W * PAD_PERCENT.left
+  };
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top  - PAD.bottom;
 
@@ -562,7 +568,8 @@ gCanvas.addEventListener('mousedown', e => {
   gCanvas.style.cursor = 'grabbing';
 });
 
-window.addEventListener('mousemove', e => {
+
+function handleMouseMove(e) {
   if (!isPanning) return;
   if (isLoading) return;
   const dx = e.clientX - panStartX;
@@ -572,9 +579,53 @@ window.addEventListener('mousemove', e => {
   const _visiblePoints = activeDays === 0 ? _N : daysToPoints(_allData, activeDays);
   const _pointSpacing = _chartW / Math.max(_visiblePoints - 1, 1);
   const maxPan = Math.max(0, (_N - _visiblePoints) * _pointSpacing);
-  panOffset = panStartOffset + dx
+  panOffset = Math.min(maxPan, Math.max(0, panStartOffset + dx));
   drawGraph();
-});
+}
+
+function handleTouchMove(e) {
+  if (!isPanning) return;
+  if (isLoading) return;
+  const touch = e.touches[0];
+  const dx = touch.clientX - panStartTouchX;
+  const _allData = getData(symbols[0]);
+  const _N = _allData.length;
+  const _chartW = gCanvas.width - 68 - 20;
+  const _visiblePoints = activeDays === 0 ? _N : daysToPoints(_allData, activeDays);
+  const _pointSpacing = _chartW / Math.max(_visiblePoints - 1, 1);
+  const maxPan = Math.max(0, (_N - _visiblePoints) * _pointSpacing);
+  panOffset = Math.min(maxPan, Math.max(0, panStartOffset + dx));
+  drawGraph();
+}
+
+function handleMouseDown(e) {
+  isPanning = true;
+  panStartX = e.clientX;
+  panStartOffset = panOffset;
+}
+
+function handleTouchStart(e) {
+  isPanning = true;
+  const touch = e.touches[0];
+  panStartTouchX = touch.clientX;
+  panStartOffset = panOffset;
+}
+
+function handleMouseUp() {
+  isPanning = false;
+}
+
+function handleTouchEnd() {
+  isPanning = false;
+}
+
+window.addEventListener('mousemove', handleMouseMove);
+window.addEventListener('mousedown', handleMouseDown);
+window.addEventListener('mouseup', handleMouseUp);
+
+window.addEventListener('touchstart', handleTouchStart);
+window.addEventListener('touchmove', handleTouchMove);
+window.addEventListener('touchend', handleTouchEnd);
 
 window.addEventListener('mouseup', () => {
   isPanning = false;
@@ -973,7 +1024,7 @@ function quickSentiment(headline) {
     'rebound', 'win', 'award', 'launch', 'innovation', 'partnership',
     'deal', 'acquire', 'dividend', 'buyback', 'guidance', 'upbeat',
     'accelerate', 'dominate', 'long', 'best', 'good', 'brilliant', 'surprise', 'undervalue', 'hot', 'safe', 'perfect', 'hope',
-    'trend', 'upside', 'pop', 'recognize'
+    'trend', 'upside', 'pop', 'recognize', 'lead', 'own', 'take off', 'taking off'
 ];
   const bearish = [
     'miss', 'cut', 'fall', 'decline', 'loss', 'downgrade', 'sell',

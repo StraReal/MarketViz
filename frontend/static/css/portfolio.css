@@ -90,6 +90,7 @@
   padding: 4px 8px;
   outline: none;
   transition: border-color 0.15s;
+  text-transform: uppercase;
 }
 #search-box:focus { border-color: var(--accent); }
 #search-box::placeholder { color: var(--text-dim); }

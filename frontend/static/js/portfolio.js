@@ -1,4 +1,4 @@
-const API = 'http://localhost:5000/api';
+const API = `${window.location.origin}/api`;
 let stocks = {};
 let done = false;
 let totalTickers = 0;
@@ -616,9 +616,12 @@ const tooltip = document.getElementById('tooltip');
 canvas.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
   isDragging = false;
-  dragStartX = e.clientX; dragStartY = e.clientY;
-  mouseDownX = e.clientX; mouseDownY = e.clientY;
-  camStartX = camX; camStartY = camY;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  mouseDownX = e.clientX;
+  mouseDownY = e.clientY;
+  camStartX = camX;
+  camStartY = camY;
 });
 
 window.addEventListener('mousemove', e => {
@@ -631,8 +634,8 @@ window.addEventListener('mousemove', e => {
       wrap.classList.add('dragging');
     }
     if (isDragging) {
-      camX = camStartX + dx/zoom;
-      camY = camStartY + dy/zoom;
+      camX = camStartX + dx / zoom;
+      camY = camStartY + dy / zoom;
       render();
     }
   }
@@ -641,24 +644,27 @@ window.addEventListener('mousemove', e => {
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
   let hit = null;
-  for (let i = hitTiles.length-1; i >= 0; i--) {
+  for (let i = hitTiles.length - 1; i >= 0; i--) {
     const t = hitTiles[i];
-    if (mx>=t.sx && mx<=t.sx+t.sw && my>=t.sy && my<=t.sy+t.sh) { hit=t.s; break; }
+    if (mx >= t.sx && mx <= t.sx + t.sw && my >= t.sy && my <= t.sy + t.sh) {
+      hit = t.s;
+      break;
+    }
   }
   if (hit) {
     tooltip.style.display = 'block';
-    tooltip.style.left = Math.min(e.clientX+14, window.innerWidth-280)+'px';
-    tooltip.style.top  = Math.min(e.clientY+14, window.innerHeight-200)+'px';
-    const chSign = hit.change>=0?'+':''
+    tooltip.style.left = Math.min(e.clientX + 14, window.innerWidth - 280) + 'px';
+    tooltip.style.top = Math.min(e.clientY + 14, window.innerHeight - 200) + 'px';
+    const chSign = hit.change >= 0 ? '+' : '';
     const h = portfolioHoldings[hit.symbol];
     tooltip.innerHTML = `
       <div class="tt-symbol">${hit.symbol}</div>
       <div class="tt-sub">${hit.sector} › ${hit.subsector}</div>
-      <div class="tt-row"><span class="tt-label">Value</span><span class="tt-val">$${hit.price!=null?(hit.price*h.shares).toFixed(2):'—'}</span></div>
-      <div class="tt-row"><span class="tt-label">Daily P/L</span><span class="tt-val ${hit.change>0?'pos':'neg'}">${chSign}${hit.change!=null?(hit.change >= 0 ? '$' : '-$') + Math.abs(hit.change * h.shares).toFixed(2):'—'}</span></div>
+      <div class="tt-row"><span class="tt-label">Value</span><span class="tt-val">$${hit.price != null ? (hit.price * h.shares).toFixed(2) : '—'}</span></div>
+      <div class="tt-row"><span class="tt-label">Daily P/L</span><span class="tt-val ${hit.change > 0 ? 'pos' : 'neg'}">${chSign}${hit.change != null ? (hit.change >= 0 ? '$' : '-$') + Math.abs(hit.change * h.shares).toFixed(2) : '—'}</span></div>
       <div class="tt-divider"></div>
-      <div class="tt-row"><span class="tt-label">Price</span><span class="tt-val">$${hit.price!=null?hit.price.toFixed(2):'—'}</span></div>
-      <div class="tt-row"><span class="tt-label">Change</span><span class="tt-val ${hit.change>0?'pos':'neg'}">${chSign}${hit.change!=null?hit.change.toFixed(2)+'%':'—'}</span></div>
+      <div class="tt-row"><span class="tt-label">Price</span><span class="tt-val">$${hit.price != null ? hit.price.toFixed(2) : '—'}</span></div>
+      <div class="tt-row"><span class="tt-label">Change</span><span class="tt-val ${hit.change > 0 ? 'pos' : 'neg'}">${chSign}${hit.change != null ? hit.change.toFixed(2) + '%' : '—'}</span></div>
       <div class="tt-row"><span class="tt-label">Mkt Cap</span><span class="tt-val">${fmtNum(hit.market_cap)}</span></div>
       <div class="tt-divider"></div>
       <div class="tt-row"><span class="tt-label">P/E</span><span class="tt-val">${fmt2(hit.pe)}</span></div>
@@ -671,43 +677,108 @@ window.addEventListener('mousemove', e => {
 });
 
 window.addEventListener('mouseup', e => {
-  if (e.button !== 0 || currentView!=='heatmap') return;
+  if (e.button !== 0 || currentView !== 'heatmap') return;
   wrap.classList.remove('dragging');
   if (!isDragging) {
     const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
 
     const topEl = document.elementFromPoint(e.clientX, e.clientY);
     if (topEl !== canvas) return;
 
     let clicked = null;
-    for (let i = hitTiles.length-1; i >= 0; i--) {
+    for (let i = hitTiles.length - 1; i >= 0; i--) {
       const t = hitTiles[i];
-      if (mx>=t.sx && mx<=t.sx+t.sw && my>=t.sy && my<=t.sy+t.sh) { clicked=t.s; break; }
+      if (mx >= t.sx && mx <= t.sx + t.sw && my >= t.sy && my <= t.sy + t.sh) {
+        clicked = t.s;
+        break;
+      }
     }
     if (clicked) {
-      if (e.ctrlKey) window.open(`https://finviz.com/quote.ashx?t=${clicked.symbol}&p=d`,'_blank');
-      else selectSymbol(clicked.symbol);
+      selectSymbol(clicked.symbol);
     }
   }
 });
 
 window.addEventListener('dblclick', e => {
-  if (currentView!=='heatmap') return;
+  if (currentView !== 'heatmap') return;
   const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
 
   const topEl = document.elementFromPoint(e.clientX, e.clientY);
   if (topEl !== canvas) return;
 
   let clicked = null;
-  for (let i = hitTiles.length-1; i >= 0; i--) {
+  for (let i = hitTiles.length - 1; i >= 0; i--) {
     const t = hitTiles[i];
-    if (mx>=t.sx && mx<=t.sx+t.sw && my>=t.sy && my<=t.sy+t.sh) { clicked=t.s; break; }
+    if (mx >= t.sx && mx <= t.sx + t.sw && my >= t.sy && my <= t.sy + t.sh) {
+      clicked = t.s;
+      break;
+    }
   }
-if (clicked) window.open(`/stock?symbols=${clicked.symbol}`, '_blank');
-isDragging = false;
+  if (clicked) window.open(`/stock?symbols=${clicked.symbol}`, '_blank');
+  isDragging = false;
 });
+
+function handleTouchStart(e) {
+  if (currentView !== 'heatmap') return;
+  isDragging = false;
+  const touch = e.touches[0];
+  dragStartX = touch.clientX;
+  dragStartY = touch.clientY;
+  mouseDownX = touch.clientX;
+  mouseDownY = touch.clientY;
+  camStartX = camX;
+  camStartY = camY;
+}
+
+function handleTouchMove(e) {
+  if (currentView !== 'heatmap') return;
+  const touch = e.touches[0];
+  const dx = touch.clientX - dragStartX;
+  const dy = touch.clientY - dragStartY;
+  if (!isDragging && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+    isDragging = true;
+    wrap.classList.add('dragging');
+  }
+  if (isDragging) {
+    camX = camStartX + dx / zoom;
+    camY = camStartY + dy / zoom;
+    render();
+  }
+}
+
+function handleTouchEnd(e) {
+  if (currentView !== 'heatmap') return;
+  wrap.classList.remove('dragging');
+  if (!isDragging) {
+    const touch = e.changedTouches[0];
+    const rect = canvas.getBoundingClientRect();
+    const mx = touch.clientX - rect.left;
+    const my = touch.clientY - rect.top;
+
+    const topEl = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (topEl !== canvas) return;
+
+    let clicked = null;
+    for (let i = hitTiles.length - 1; i >= 0; i--) {
+      const t = hitTiles[i];
+      if (mx >= t.sx && mx <= t.sx + t.sw && my >= t.sy && my <= t.sy + t.sh) {
+        clicked = t.s;
+        break;
+      }
+    }
+    if (clicked) {
+      selectSymbol(clicked.symbol);
+    }
+  }
+}
+
+canvas.addEventListener('touchstart', handleTouchStart);
+canvas.addEventListener('touchmove', handleTouchMove);
+canvas.addEventListener('touchend', handleTouchEnd);
 
 
 let tradeSymbol = null;

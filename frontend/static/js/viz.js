@@ -1,4 +1,4 @@
-const API = 'http://localhost:5000/api';
+const API = `${window.location.origin}/api`;
 let stocks = {};
 let done = false;
 let totalTickers = 0;
@@ -602,12 +602,49 @@ function toggleFav(sym) {
 
 const tooltip = document.getElementById('tooltip');
 
+let isPinching = false;
+let startDist = 0;
+let startZoom = 1;
+let startCamX = 0;
+let startCamY = 0;
+
 canvas.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
   isDragging = false;
-  dragStartX = e.clientX; dragStartY = e.clientY;
-  mouseDownX = e.clientX; mouseDownY = e.clientY;
-  camStartX = camX; camStartY = camY;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  mouseDownX = e.clientX;
+  mouseDownY = e.clientY;
+  camStartX = camX;
+  camStartY = camY;
+});
+
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    isDragging = false;
+    const touch = e.touches[0];
+    dragStartX = touch.clientX;
+    dragStartY = touch.clientY;
+    mouseDownX = touch.clientX;
+    mouseDownY = touch.clientY;
+    camStartX = camX;
+    camStartY = camY;
+  } else if (e.touches.length === 2) {
+    isPinching = true;
+    const rect = canvas.getBoundingClientRect();
+    const touch1 = e.touches[0];
+    const touch2 = e.touches[1];
+    startDist = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+    startZoom = zoom;
+    startCamX = camX;
+    startCamY = camY;
+    const mx = (touch1.clientX + touch2.clientX) / 2 - rect.left;
+    const my = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+    const wbx = mx / zoom - camX;
+    const wby = my / zoom - camY;
+    startCamX = mx / zoom - wbx;
+    startCamY = my / zoom - wby;
+  }
 });
 
 window.addEventListener('mousemove', e => {
@@ -619,8 +656,8 @@ window.addEventListener('mousemove', e => {
       wrap.classList.add('dragging');
     }
     if (isDragging) {
-      camX = camStartX + dx/zoom;
-      camY = camStartY + dy/zoom;
+      camX = camStartX + dx / zoom;
+      camY = camStartY + dy / zoom;
       render();
     }
   }
@@ -629,20 +666,23 @@ window.addEventListener('mousemove', e => {
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
   let hit = null;
-  for (let i = hitTiles.length-1; i >= 0; i--) {
+  for (let i = hitTiles.length - 1; i >= 0; i--) {
     const t = hitTiles[i];
-    if (mx>=t.sx && mx<=t.sx+t.sw && my>=t.sy && my<=t.sy+t.sh) { hit=t.s; break; }
+    if (mx >= t.sx && mx <= t.sx + t.sw && my >= t.sy && my <= t.sy + t.sh) {
+      hit = t.s;
+      break;
+    }
   }
   if (hit) {
     tooltip.style.display = 'block';
-    tooltip.style.left = Math.min(e.clientX+14, window.innerWidth-280)+'px';
-    tooltip.style.top  = Math.min(e.clientY+14, window.innerHeight-200)+'px';
-    const chSign = hit.change>=0?'+':'';
+    tooltip.style.left = Math.min(e.clientX + 14, window.innerWidth - 280) + 'px';
+    tooltip.style.top = Math.min(e.clientY + 14, window.innerHeight - 200) + 'px';
+    const chSign = hit.change >= 0 ? '+' : '';
     tooltip.innerHTML = `
       <div class="tt-symbol">${hit.symbol}</div>
       <div class="tt-sub">${hit.sector} › ${hit.subsector}</div>
-      <div class="tt-row"><span class="tt-label">Price</span><span class="tt-val">$${hit.price!=null?hit.price.toFixed(2):'—'}</span></div>
-      <div class="tt-row"><span class="tt-label">Change</span><span class="tt-val ${hit.change>0?'pos':'neg'}">${chSign}${hit.change!=null?hit.change.toFixed(2)+'%':'—'}</span></div>
+      <div class="tt-row"><span class="tt-label">Price</span><span class="tt-val">$${hit.price != null ? hit.price.toFixed(2) : '—'}</span></div>
+      <div class="tt-row"><span class="tt-label">Change</span><span class="tt-val ${hit.change > 0 ? 'pos' : 'neg'}">${chSign}${hit.change != null ? hit.change.toFixed(2) + '%' : '—'}</span></div>
       <div class="tt-row"><span class="tt-label">Mkt Cap</span><span class="tt-val">${fmtNum(hit.market_cap)}</span></div>
       <div class="tt-divider"></div>
       <div class="tt-row"><span class="tt-label">P/E</span><span class="tt-val">${fmt2(hit.pe)}</span></div>
@@ -654,55 +694,151 @@ window.addEventListener('mousemove', e => {
   }
 });
 
+canvas.addEventListener('touchmove', e => {
+  if (e.touches.length === 1) {
+    const touch = e.touches[0];
+    const dx = touch.clientX - dragStartX;
+    const dy = touch.clientY - dragStartY;
+    if (!isDragging && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+      isDragging = true;
+      wrap.classList.add('dragging');
+    }
+    if (isDragging) {
+      camX = camStartX + dx / zoom;
+      camY = camStartY + dy / zoom;
+      render();
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const mx = touch.clientX - rect.left;
+    const my = touch.clientY - rect.top;
+    let hit = null;
+    for (let i = hitTiles.length - 1; i >= 0; i--) {
+      const t = hitTiles[i];
+      if (mx >= t.sx && mx <= t.sx + t.sw && my >= t.sy && my <= t.sy + t.sh) {
+        hit = t.s;
+        break;
+      }
+    }
+    if (hit) {
+      tooltip.style.display = 'block';
+      tooltip.style.left = Math.min(touch.clientX + 14, window.innerWidth - 280) + 'px';
+      tooltip.style.top = Math.min(touch.clientY + 14, window.innerHeight - 200) + 'px';
+      const chSign = hit.change >= 0 ? '+' : '';
+      tooltip.innerHTML = `
+        <div class="tt-symbol">${hit.symbol}</div>
+        <div class="tt-sub">${hit.sector} › ${hit.subsector}</div>
+        <div class="tt-row"><span class="tt-label">Price</span><span class="tt-val">$${hit.price != null ? hit.price.toFixed(2) : '—'}</span></div>
+        <div class="tt-row"><span class="tt-label">Change</span><span class="tt-val ${hit.change > 0 ? 'pos' : 'neg'}">${chSign}${hit.change != null ? hit.change.toFixed(2) + '%' : '—'}</span></div>
+        <div class="tt-row"><span class="tt-label">Mkt Cap</span><span class="tt-val">${fmtNum(hit.market_cap)}</span></div>
+        <div class="tt-divider"></div>
+        <div class="tt-row"><span class="tt-label">P/E</span><span class="tt-val">${fmt2(hit.pe)}</span></div>
+        <div class="tt-row"><span class="tt-label">fP/E</span><span class="tt-val">${fmt2(hit.fpe)}</span></div>
+        <div class="tt-row"><span class="tt-label">fPEG</span><span class="tt-val">${fmt2(hit.fpeg)}</span></div>
+      `;
+    } else {
+      tooltip.style.display = 'none';
+    }
+  } else if (e.touches.length === 2 && isPinching) {
+    const touch1 = e.touches[0];
+    const touch2 = e.touches[1];
+    const currentDist = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+    const scale = currentDist / startDist;
+    zoom = Math.max(0.05, Math.min(50, startZoom * scale));
+    const rect = canvas.getBoundingClientRect();
+    const mx = (touch1.clientX + touch2.clientX) / 2 - rect.left;
+    const my = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+    const wbx = mx / zoom - startCamX;
+    const wby = my / zoom - startCamY;
+    camX = mx / zoom - wbx;
+    camY = my / zoom - wby;
+    render();
+  }
+});
+
 window.addEventListener('mouseup', e => {
   if (e.button !== 0) return;
   wrap.classList.remove('dragging');
   if (!isDragging) {
     const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
 
     const topEl = document.elementFromPoint(e.clientX, e.clientY);
     if (topEl !== canvas) return;
 
     let clicked = null;
-    for (let i = hitTiles.length-1; i >= 0; i--) {
+    for (let i = hitTiles.length - 1; i >= 0; i--) {
       const t = hitTiles[i];
-      if (mx>=t.sx && mx<=t.sx+t.sw && my>=t.sy && my<=t.sy+t.sh) { clicked=t.s; break; }
+      if (mx >= t.sx && mx <= t.sx + t.sw && my >= t.sy && my <= t.sy + t.sh) {
+        clicked = t.s;
+        break;
+      }
     }
     if (clicked) {
-      if (e.ctrlKey) window.open(`https://finviz.com/quote.ashx?t=${clicked.symbol}&p=d`,'_blank');
-      else selectSymbol(clicked.symbol);
+      selectSymbol(clicked.symbol);
+    }
+  }
+});
+
+canvas.addEventListener('touchend', e => {
+  if (e.touches.length === 0) {
+    wrap.classList.remove('dragging');
+    isPinching = false;
+    if (!isDragging) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.changedTouches[0].clientX - rect.left;
+      const my = e.changedTouches[0].clientY - rect.top;
+
+      const topEl = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      if (topEl !== canvas) return;
+
+      let clicked = null;
+      for (let i = hitTiles.length - 1; i >= 0; i--) {
+        const t = hitTiles[i];
+        if (mx >= t.sx && mx <= t.sx + t.sw && my >= t.sy && my <= t.sy + t.sh) {
+          clicked = t.s;
+          break;
+        }
+      }
+      if (clicked) {
+        selectSymbol(clicked.symbol);
+      }
     }
   }
 });
 
 window.addEventListener('dblclick', e => {
   const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
 
   const topEl = document.elementFromPoint(e.clientX, e.clientY);
   if (topEl !== canvas) return;
 
   let clicked = null;
-  for (let i = hitTiles.length-1; i >= 0; i--) {
+  for (let i = hitTiles.length - 1; i >= 0; i--) {
     const t = hitTiles[i];
-    if (mx>=t.sx && mx<=t.sx+t.sw && my>=t.sy && my<=t.sy+t.sh) { clicked=t.s; break; }
+    if (mx >= t.sx && mx <= t.sx + t.sw && my >= t.sy && my <= t.sy + t.sh) {
+      clicked = t.s;
+      break;
+    }
   }
-if (clicked) window.open(`/stock?symbols=${clicked.symbol}`, '_blank');
-isDragging = false;
+  if (clicked) window.open(`/stock?symbols=${clicked.symbol}`, '_blank');
+  isDragging = false;
 });
 
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  const wbx = mx/zoom - camX, wby = my/zoom - camY;
+  const wbx = mx / zoom - camX, wby = my / zoom - camY;
   const factor = e.deltaY < 0 ? 1.1 : 0.9;
   zoom = Math.max(0.05, Math.min(50, zoom * factor));
-  camX = mx/zoom - wbx;
-  camY = my/zoom - wby;
+  camX = mx / zoom - wbx;
+  camY = my / zoom - wby;
   render();
-}, {passive:false});
+}, { passive: false });
 
 const searchBox = document.getElementById('search-box');
 
