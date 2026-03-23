@@ -1,6 +1,6 @@
 import os, sys, requests, zipfile, shutil, subprocess
 
-CURRENT_VERSION = "v0.0.1"
+CURRENT_VERSION = "v0.0.2"
 GITHUB_REPO = "StraReal/MarketViz" # Change to manage your own updates
 
 def check_for_update():
