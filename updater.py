@@ -1,4 +1,4 @@
-import os, sys, requests, zipfile, shutil
+import os, sys, requests, zipfile, shutil, subprocess
 
 CURRENT_VERSION = "v0.0.1"
 GITHUB_REPO = "StraReal/MarketViz" # Change to manage your own updates
@@ -51,5 +51,6 @@ def download_and_apply(zip_url, new_version):
 
     shutil.rmtree("update_tmp", ignore_errors=True)
     os.remove("update.zip")
-    print("[updater] Update applied — restarting...")
-    os.execv(sys.executable, [sys.executable] + sys.argv)
+    print("[updater] Update applied, restarting...")
+    subprocess.Popen([sys.executable] + sys.argv)
+    sys.exit(0)
