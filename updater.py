@@ -11,10 +11,12 @@ def check_for_update():
             timeout=10
         )
         if r.status_code != 200:
+            print(f"Could not fetch latest release from GitHub, failed with status code {r.status_code}")
             return
 
         latest = r.json().get("tag_name")
         if not latest or latest == CURRENT_VERSION:
+            print("Already up to date")
             return
 
         print(f"[updater] New version {latest}, updating...")
