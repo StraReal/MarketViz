@@ -973,7 +973,7 @@ function quickSentiment(headline) {
     'rebound', 'win', 'award', 'launch', 'innovation', 'partnership',
     'deal', 'acquire', 'dividend', 'buyback', 'guidance', 'upbeat',
     'accelerate', 'dominate', 'long', 'best', 'good', 'brilliant', 'surprise', 'undervalue', 'hot', 'safe', 'perfect', 'hope',
-    'trend', 'upside'
+    'trend', 'upside', 'pop', 'recognize'
 ];
   const bearish = [
     'miss', 'cut', 'fall', 'decline', 'loss', 'downgrade', 'sell',
@@ -984,7 +984,7 @@ function quickSentiment(headline) {
     'negative', 'concern', 'fear', 'uncertainty', 'volatile', 'penalty',
     'fine', 'hack', 'breach', 'suspend', 'halt', 'reduce', 'lower',                 //worse, worst                         //scary, scare
     'shrink', 'struggle', 'trouble', 'short', 'underperform', 'pullback', 'brutal', 'wors', 'bad', 'overvalue', 'terrify', 'scar', 'drop',
-    'flee', 'downside'
+    'flee', 'downside', 'death'
 ];
   const b = bullish.filter(w => h.includes(w)).length;
   const br = bearish.filter(w => h.includes(w)).length;
