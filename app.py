@@ -14,7 +14,6 @@ import time
 import os
 import random
 import csv
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 
 from updater import *
@@ -44,7 +43,7 @@ required = ('sector', 'subsector', 'symbol', 'price', 'market_cap', 'change', 'm
 _tickers_cache = None
 _tickers_loaded_at = None
 TICKERS_TTL = 3600
-DO_AUTO_UPDATE = True # Turn off to disable auto updates at all.
+DO_AUTO_UPDATE = True # Turn off to disable auto updates completely.
 
 SECRETS_FILE = 'secrets.json'
 
@@ -721,10 +720,12 @@ def dates(symbol):
     )
 
 def schedule_fetch():
-    check_for_update()
+    if DO_AUTO_UPDATE:
+        check_for_update()
     while True:
         time.sleep(300)
-        check_for_update()
+        if DO_AUTO_UPDATE:
+            check_for_update()
         print("Scheduled refetch starting...")
         global fetch_thread
         stop_event.set()

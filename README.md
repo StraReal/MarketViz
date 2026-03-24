@@ -1,7 +1,6 @@
 ### Setup
-
-1. Install dependencies: `pip install -r requirements.txt`
-2. Copy `secrets.template.json` to `secrets.json` and fill in your keys
+1. Clone the repo: ```git clone https://github.com/StraReal/MarketViz.git```
+2. You can run the script by just double-clicking `mviz.bat`
 
 ### API Keys
 
@@ -15,7 +14,7 @@
 
 ### Notes
 
-Theoretically just running app.py and going to http://localhost:5000 should lead you to the main visualization no problem, from which you can then visit all the various parts of the suite.
+Once you run `mviz.bat` (or `app.py`) it will expose the visualization on `0.0.0.0:5000`. This can be changed in the code however you like.
 
 I highly recommend not stopping the program and restarting it again quickly, this will send lots of requests to yfinance and get you rate limited.
 
