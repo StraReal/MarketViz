@@ -1,4 +1,5 @@
 import math
+import webbrowser
 from datetime import datetime, date, timedelta
 
 import numpy as np
@@ -44,6 +45,8 @@ _tickers_cache = None
 _tickers_loaded_at = None
 TICKERS_TTL = 3600
 DO_AUTO_UPDATE = True # Turn off to disable auto updates completely.
+host = '0.0.0.0'
+port = 21926
 
 SECRETS_FILE = 'secrets.json'
 
@@ -739,4 +742,5 @@ if __name__ == '__main__':
     fetch_thread = threading.Thread(target=fetch_all, daemon=True)
     fetch_thread.start()
     threading.Thread(target=schedule_fetch, daemon=True).start()
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    threading.Timer(1.5, lambda: webbrowser.open(f'http://{host}:{port}')).start()
+    app.run(host=host, port=port, debug=False, threaded=True)
