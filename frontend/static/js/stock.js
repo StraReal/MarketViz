@@ -579,7 +579,7 @@ function handleMouseMove(e) {
   const _visiblePoints = activeDays === 0 ? _N : daysToPoints(_allData, activeDays);
   const _pointSpacing = _chartW / Math.max(_visiblePoints - 1, 1);
   const maxPan = Math.max(0, (_N - _visiblePoints) * _pointSpacing);
-  panOffset = Math.min(maxPan, Math.max(0, panStartOffset + dx));
+  panOffset = Math.min(maxPan, panStartOffset + dx);
   drawGraph();
 }
 
@@ -594,7 +594,7 @@ function handleTouchMove(e) {
   const _visiblePoints = activeDays === 0 ? _N : daysToPoints(_allData, activeDays);
   const _pointSpacing = _chartW / Math.max(_visiblePoints - 1, 1);
   const maxPan = Math.max(0, (_N - _visiblePoints) * _pointSpacing);
-  panOffset = Math.min(maxPan, Math.max(0, panStartOffset + dx));
+  panOffset = Math.min(maxPan, panStartOffset + dx);
   drawGraph();
 }
 
